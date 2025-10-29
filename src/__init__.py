@@ -1,1 +1,1 @@
-# Federated Learning Simulator package
+# Package initializer
