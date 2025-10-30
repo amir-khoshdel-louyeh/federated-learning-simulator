@@ -43,11 +43,22 @@ source .venv/bin/activate
    ```bash
    pip install -r requirements.txt
    ```
+
 2. Run the simulator GUI:
-   ```bash
-   python src/gui.py
-   ```
-3. Select an algorithm and dataset to start experimenting.
+    ```bash
+    python src/gui.py
+    ```
+
+3. **New GUI Features:**
+    - **Data Partitioning:**
+       - Choose between `IID` (default) and `non-IID` data partitioning for clients. Non-IID simulates more realistic federated settings where each client may have data from only a subset of classes.
+    - **Run All Algorithms:**
+       - Use the `Run All Algorithms` button to execute all implemented algorithms (FedAvg, FedOpt, FedPer, FedProx, FedSGD) with the selected parameters and partitioning strategy.
+    - **How to use:**
+       1. Select the desired algorithm or choose `Run All Algorithms`.
+       2. Set the number of clients, rounds, local epochs, and batch size.
+       3. Select the data partitioning strategy (IID or non-IID).
+       4. Click `Run` or `Run All Algorithms` to start.
 
 ## License
 This project is licensed under the MIT License.
