@@ -10,7 +10,26 @@ sys.path.append(os.path.dirname(__file__))
 
 from aggregation_algorithms import fedavg, fedopt, fedprox, fednova, scaffold, clustered_fl, personalized_fl
 from data import split_indices_iid, split_indices_non_iid
-from evaluation import print_sorted_results
+from evaluation import print_sorted_results, format_sorted_results
+
+
+class TextRedirector(io.StringIO):
+	"""Redirect text writes to a Tkinter widget in a thread-safe way."""
+
+	def __init__(self, widget):
+		super().__init__()
+		self.widget = widget
+
+	def write(self, message):
+		if not message:
+			return
+		def append():
+			self.widget.insert(tk.END, message)
+			self.widget.see(tk.END)
+		self.widget.after(0, append)
+
+	def flush(self):
+		pass
 
 def get_algo_func(algo, params):
 	partition = params.get('partition', 'IID')
@@ -49,75 +68,48 @@ def get_eval_func(algo):
 		return lambda models: personalized_fl.evaluate(models, dataset_name=dataset_var.get())
 
 def run_algorithm(algo, params, output_box):
-	output_box.insert(tk.END, f"Running {algo} with params: {params}\n")
-	output_box.see(tk.END)
-	# Redirect stdout to capture print statements
-	old_stdout = sys.stdout
-	sys.stdout = mystdout = io.StringIO()
+	redirector = TextRedirector(output_box)
+	old_stdout, old_stderr = sys.stdout, sys.stderr
+	sys.stdout = sys.stderr = redirector
+	results = None
 	try:
+		print(f"Running {algo} with params: {params}")
 		result = get_algo_func(algo, params)()
-		output_box.insert(tk.END, mystdout.getvalue())
-		output_box.insert(tk.END, f"Training finished. Evaluating...\n")
-		output_box.see(tk.END)
-		mystdout.truncate(0)
-		mystdout.seek(0)
+		print("Training finished. Evaluating...")
 		eval_result = get_eval_func(algo)(result)
-		output_box.insert(tk.END, mystdout.getvalue())
-		output_box.insert(tk.END, f"Result: {eval_result}\n\n")
-		output_box.see(tk.END)
+		results = eval_result
+		print(f"Result: {eval_result}\n")
 	except Exception as e:
-		output_box.insert(tk.END, mystdout.getvalue())
-		output_box.insert(tk.END, f"Error: {e}\n")
-		output_box.see(tk.END)
+		print(f"Error: {e}")
 	finally:
-		sys.stdout = old_stdout
+		sys.stdout, sys.stderr = old_stdout, old_stderr
+	return results
 
 def run_all_algorithms(params, output_box):
 	algos = ["FedAvg", "FedOpt", "FedProx", "FedNova", "SCAFFOLD", "Clustered FL", "Personalized FL"]
 	results = {}
-	for algo in algos:
-		output_box.insert(tk.END, f"\n--- Running {algo} ---\n")
-		output_box.see(tk.END)
-		old_stdout = sys.stdout
-		sys.stdout = mystdout = io.StringIO()
-		try:
+	redirector = TextRedirector(output_box)
+	old_stdout, old_stderr = sys.stdout, sys.stderr
+	sys.stdout = sys.stderr = redirector
+	try:
+		separator = "=" * 20
+		for idx, algo in enumerate(algos):
+			if idx > 0:
+				print(separator)
+				print()
+			print(f"--- Running {algo} ---")
 			result = get_algo_func(algo, params)()
-			output_box.insert(tk.END, mystdout.getvalue())
-			output_box.insert(tk.END, f"Training finished. Evaluating...\n")
-			output_box.see(tk.END)
-			mystdout.truncate(0)
-			mystdout.seek(0)
+			print("Training finished. Evaluating...")
 			eval_result = get_eval_func(algo)(result)
-			output_box.insert(tk.END, mystdout.getvalue())
-			output_box.insert(tk.END, f"Result: {eval_result}\n\n")
-			output_box.see(tk.END)
 			results[algo] = eval_result
-		except Exception as e:
-			output_box.insert(tk.END, mystdout.getvalue())
-			output_box.insert(tk.END, f"Error: {e}\n")
-			output_box.see(tk.END)
-		finally:
-			sys.stdout = old_stdout
-
-	# Show sorted results in GUI output box
-	def format_sorted_results(results):
-		processed = {}
-		for k, v in results.items():
-			if isinstance(v, list):
-				processed[k] = sum(v) / len(v)
-			else:
-				processed[k] = v
-		sorted_items = sorted(processed.items(), key=lambda x: x[1], reverse=True)
-		lines = ["\n===== Sorted Algorithm Results ====="]
-		for i, (algo, acc) in enumerate(sorted_items, 1):
-			lines.append(f"{i}. {algo}: {acc:.4f}")
-		lines.append("===================================\n")
-		return "\n".join(lines)
-
-	output_box.insert(tk.END, format_sorted_results(results))
-	output_box.see(tk.END)
-	# Print sorted results to terminal as well
-	print_sorted_results(results)
+			print(f"Result: {eval_result}\n")
+		print(format_sorted_results(results))
+	except Exception as e:
+		print(f"Error: {e}")
+	finally:
+		sys.stdout, sys.stderr = old_stdout, old_stderr
+	if results:
+		print_sorted_results(results)
 
 def on_run():
 	algo = algo_var.get()

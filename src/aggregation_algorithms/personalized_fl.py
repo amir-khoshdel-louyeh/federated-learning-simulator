@@ -58,7 +58,11 @@ def train_personalized_fl(num_clients=5, num_rounds=3, local_epochs=1, batch_siz
 			avg_weights[key] = avg_weights[key] / len(local_weights)
 		
 		set_weights(global_model, avg_weights)
-		print(f"Personalized FL Round {rnd+1} (global training) complete.")
+		print(f"Round {rnd+1} complete.")
+		print("(global training phase)")
+		round_acc = _compute_global_accuracy(global_model, data_dir, batch_size, dataset_name)
+		print(f"accuracy: {round_acc:.4f}")
+		print(f"result: {round_acc:.4f}\n")
 	
 	# Phase 2: Personalization - each client fine-tunes the global model
 	print(f"Starting personalization phase (fine-tuning for {finetune_epochs} epochs per client)...")
@@ -85,16 +89,28 @@ def train_personalized_fl(num_clients=5, num_rounds=3, local_epochs=1, batch_siz
 	
 	return personalized_models
 
-def evaluate(models, data_dir="../data/MNIST", batch_size=32, dataset_name="MNIST"):
-	"""
-	Evaluate all personalized models and return their average accuracy.
-	"""
-	# Force CPU usage
+
+def _compute_global_accuracy(model, data_dir, batch_size, dataset_name):
+	device = torch.device("cpu")
+	model = model.to(device)
+	loader = load_dataset(dataset_name, data_dir, batch_size=batch_size, train=False)
+	model.eval()
+	correct, total = 0, 0
+	with torch.no_grad():
+		for x, y in loader:
+			x, y = x.to(device), y.to(device)
+			out = model(x)
+			pred = out.argmax(dim=1)
+			correct += (pred == y).sum().item()
+			total += y.size(0)
+	return correct / total if total > 0 else 0.0
+
+
+def _evaluate_personalized_models(models, data_dir, batch_size, dataset_name):
 	device = torch.device("cpu")
 	loader = load_dataset(dataset_name, data_dir, batch_size=batch_size, train=False)
 	accuracies = []
-	
-	for idx, model in enumerate(models):
+	for model in models:
 		model = model.to(device)
 		model.eval()
 		correct, total = 0, 0
@@ -105,10 +121,18 @@ def evaluate(models, data_dir="../data/MNIST", batch_size=32, dataset_name="MNIS
 				pred = out.argmax(dim=1)
 				correct += (pred == y).sum().item()
 				total += y.size(0)
-		acc = correct / total
-		print(f"Client {idx} personalized model accuracy: {acc:.4f}")
-		accuracies.append(acc)
-	
-	avg_acc = sum(accuracies) / len(accuracies)
-	print(f"Average personalized accuracy: {avg_acc:.4f}")
+		accuracies.append(correct / total if total > 0 else 0.0)
+	return accuracies
+
+
+def evaluate(models, data_dir="../data/MNIST", batch_size=32, dataset_name="MNIST", verbose=True):
+	"""
+	Evaluate all personalized models and return their average accuracy.
+	"""
+	accuracies = _evaluate_personalized_models(models, data_dir, batch_size, dataset_name)
+	if verbose:
+		for idx, acc in enumerate(accuracies):
+			print(f"Client {idx} personalized model accuracy: {acc:.4f}")
+		avg_acc = sum(accuracies) / len(accuracies) if accuracies else 0.0
+		print(f"Average personalized accuracy: {avg_acc:.4f}")
 	return accuracies  # Return list of accuracies

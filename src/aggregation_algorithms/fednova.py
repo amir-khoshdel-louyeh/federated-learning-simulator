@@ -79,11 +79,16 @@ def train_fednova(num_clients=5, num_rounds=3, local_epochs=1, batch_size=32, da
 			new_weights[key] = global_weights[key] + aggregated_delta[key]
 		
 		set_weights(global_model, new_weights)
-		print(f"FedNova Round {rnd+1} complete. (normalized by step counts: {local_normalizers})")
+		print(f"Round {rnd+1} complete.")
+		print(f"(normalized by step counts: {local_normalizers})")
+		round_acc = evaluate(global_model, data_dir=data_dir, batch_size=batch_size, dataset_name=dataset_name, verbose=False)
+		print(f"accuracy: {round_acc:.4f}")
+		print(f"result: {round_acc:.4f}\n")
 	
 	return global_model
 
-def evaluate(model, data_dir="../data/MNIST", batch_size=32, dataset_name="MNIST"):
+
+def _compute_accuracy(model, data_dir, batch_size, dataset_name):
 	# Force CPU usage
 	device = torch.device("cpu")
 	model = model.to(device)
@@ -97,6 +102,11 @@ def evaluate(model, data_dir="../data/MNIST", batch_size=32, dataset_name="MNIST
 			pred = out.argmax(dim=1)
 			correct += (pred == y).sum().item()
 			total += y.size(0)
-	acc = correct / total
-	print(f"Test Accuracy: {acc:.4f}")
+	return correct / total
+
+
+def evaluate(model, data_dir="../data/MNIST", batch_size=32, dataset_name="MNIST", verbose=True):
+	acc = _compute_accuracy(model, data_dir, batch_size, dataset_name)
+	if verbose:
+		print(f"Test Accuracy: {acc:.4f}")
 	return acc

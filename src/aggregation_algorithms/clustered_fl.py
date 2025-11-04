@@ -83,21 +83,24 @@ def train_clustered_fl(num_clients=5, num_rounds=3, local_epochs=1, batch_size=3
 			avg_weights = average_weights(local_weights)
 			set_weights(cluster_models[cluster_id], avg_weights)
 		
-		print(f"Clustered FL Round {rnd+1} complete.")
+		print(f"Round {rnd+1} complete.")
+		round_acc = evaluate(cluster_models, data_dir=data_dir, batch_size=batch_size, dataset_name=dataset_name, verbose=False)
+		print(f"accuracy: {round_acc:.4f}")
+		print(f"result: {round_acc:.4f}\n")
 	
 	# Return all cluster models (we'll evaluate the best one or average them)
 	return cluster_models
 
-def evaluate(models, data_dir="../data/MNIST", batch_size=32, dataset_name="MNIST"):
+
+def _evaluate_clusters(models, data_dir, batch_size, dataset_name):
 	"""
-	Evaluate all cluster models and return the best accuracy.
+	Compute accuracies for all cluster models and return per-cluster and best accuracies.
 	"""
 	# Force CPU usage
 	device = torch.device("cpu")
 	loader = load_dataset(dataset_name, data_dir, batch_size=batch_size, train=False)
-	best_acc = 0.0
-	
-	for idx, model in enumerate(models):
+	accuracies = []
+	for model in models:
 		model = model.to(device)
 		model.eval()
 		correct, total = 0, 0
@@ -108,10 +111,15 @@ def evaluate(models, data_dir="../data/MNIST", batch_size=32, dataset_name="MNIS
 				pred = out.argmax(dim=1)
 				correct += (pred == y).sum().item()
 				total += y.size(0)
-		acc = correct / total
-		print(f"Cluster {idx} Test Accuracy: {acc:.4f}")
-		if acc > best_acc:
-			best_acc = acc
-	
-	print(f"Best Cluster Accuracy: {best_acc:.4f}")
+		accuracies.append(correct / total if total > 0 else 0.0)
+	best_acc = max(accuracies) if accuracies else 0.0
+	return accuracies, best_acc
+
+
+def evaluate(models, data_dir="../data/MNIST", batch_size=32, dataset_name="MNIST", verbose=True):
+	accuracies, best_acc = _evaluate_clusters(models, data_dir, batch_size, dataset_name)
+	if verbose:
+		for idx, acc in enumerate(accuracies):
+			print(f"Cluster {idx} Test Accuracy: {acc:.4f}")
+		print(f"Best Cluster Accuracy: {best_acc:.4f}")
 	return best_acc
