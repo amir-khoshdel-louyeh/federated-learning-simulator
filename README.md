@@ -1,35 +1,26 @@
 # Federated Learning Simulator
 
-This project provides a simulator for various federated learning algorithms, allowing users to experiment with and compare different approaches to distributed machine learning. The simulator includes implementations of several popular algorithms, a simple GUI, and utilities for data handling and aggregation.
+This project provides a simulator for various federated learning aggregation algorithms, allowing users to experiment with and compare different approaches to distributed machine learning. The simulator includes implementations of 7 popular algorithms, a simple GUI, and utilities for data handling and partitioning.
 
 ## Algorithms Implemented
 
-### FedAvg
-Federated Averaging (FedAvg) is a foundational algorithm in federated learning. It works by having each client train a local model on its own data and then sending the model updates to a central server, which averages the updates to form a new global model. This process is repeated over multiple rounds, enabling collaborative learning without sharing raw data.
+The following aggregation algorithms are available in the `src/aggregation_algorithms/` directory:
 
-### FedSGD
-Federated Stochastic Gradient Descent (FedSGD) is a variant where clients compute gradients on their local data and send these gradients to the server, which aggregates them to update the global model. Unlike FedAvg, which averages model weights, FedSGD averages gradients, making it suitable for synchronous updates.
+1. **FedAvg** - Federated Averaging (baseline)
+2. **FedProx** - Proximal term for heterogeneous data
+3. **FedOpt** - Server-side adaptive optimization
+4. **FedNova** - Normalized averaging by training steps
+5. **SCAFFOLD** - Control variates for drift correction
+6. **Clustered FL** - Separate models per client cluster
+7. **Personalized FL** - Global training + local fine-tuning
 
-### FedProx
-FedProx extends FedAvg by introducing a proximal term in the local objective function to address heterogeneity among client data. This term penalizes local updates that deviate too much from the global model, improving convergence and stability when client data distributions are non-IID (not independent and identically distributed).
-
-### FedOpt
-Federated Optimization (FedOpt) generalizes FedAvg by allowing the server to use advanced optimization algorithms (such as Adam or Yogi) instead of simple averaging. This can accelerate convergence and improve performance, especially in challenging federated settings.
-
-### FedPer
-Federated Personalization (FedPer) is designed to balance global knowledge sharing with local personalization. It allows each client to maintain a personalized part of the model while sharing a common global part, enabling better adaptation to local data characteristics.
-
-### Secure Aggregation
-Secure Aggregation is a cryptographic protocol that ensures the privacy of client updates during aggregation. It allows the server to compute the sum (or average) of client updates without learning any individual client's contribution, enhancing privacy in federated learning.
-
-### Split Learning
-Split Learning is a collaborative learning approach where the model is split between clients and the server. Clients train the initial layers and send intermediate representations to the server, which completes the forward and backward passes. This reduces client-side computation and can improve privacy.
+For detailed documentation on each algorithm, see [`docs/ALGORITHMS.md`](docs/ALGORITHMS.md).
 
 ## Project Structure
-- `src/`: Source code for algorithms, GUI, and utilities
-- `data/`: Datasets used for training and evaluation
-- `output/`: Output files and results
-- `requirements.txt`: Python dependencies
+- `src/aggregation_algorithms/` - Federated learning algorithm implementations
+- `src/` - Core utilities (data loading, partitioning, GUI)
+- `docs/` - Algorithm documentation
+- `requirements.txt` - Python dependencies
 
 ## Getting Started
 To keep your dependencies isolated, it is recommended to use a Python virtual environment. You can create and activate one as follows:
@@ -53,7 +44,7 @@ source .venv/bin/activate
     - **Data Partitioning:**
        - Choose between `IID` (default) and `non-IID` data partitioning for clients. Non-IID simulates more realistic federated settings where each client may have data from only a subset of classes.
     - **Run All Algorithms:**
-       - Use the `Run All Algorithms` button to execute all implemented algorithms (FedAvg, FedOpt, FedPer, FedProx, FedSGD) with the selected parameters and partitioning strategy.
+       - Use the `Run All Algorithms` button to execute all 7 implemented algorithms (FedAvg, FedOpt, FedProx, FedNova, SCAFFOLD, Clustered FL, Personalized FL) with the selected parameters and partitioning strategy.
     - **How to use:**
        1. Select the desired algorithm or choose `Run All Algorithms`.
        2. Set the number of clients, rounds, local epochs, and batch size.

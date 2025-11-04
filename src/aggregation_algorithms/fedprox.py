@@ -1,0 +1,71 @@
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import numpy as np
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from data import load_dataset, split_indices_iid, split_indices_non_iid
+from models import SimpleMLP
+from utils import get_weights, set_weights, average_weights
+
+def fedprox_loss(output, target, model, global_weights, mu=0.01):
+	ce_loss = nn.CrossEntropyLoss()(output, target)
+	prox_reg = 0.0
+	for k, v in model.state_dict().items():
+		prox_reg += ((v - global_weights[k]) ** 2).sum()
+	return ce_loss + mu * prox_reg
+
+def train_fedprox(num_clients=5, num_rounds=3, local_epochs=1, batch_size=32, mu=0.01, data_dir="../data/MNIST", partition="IID", dataset_name="MNIST"):
+	# Force CPU usage
+	device = torch.device("cpu")
+	full_train = load_dataset(dataset_name, data_dir, batch_size=batch_size, train=True).dataset
+	labels = None
+	if partition == "non-IID":
+		labels = [full_train[i][1] for i in range(len(full_train))]
+		indices_split = split_indices_non_iid(len(full_train), num_clients, labels=labels)
+	else:
+		indices_split = split_indices_iid(len(full_train), num_clients)
+	input_dim = 784 if dataset_name == "MNIST" else 3072
+	global_model = SimpleMLP(input_dim=input_dim).to(device)
+	for rnd in range(num_rounds):
+		local_weights = []
+		global_w = get_weights(global_model)
+		for c in range(num_clients):
+			client_model = SimpleMLP(input_dim=input_dim).to(device)
+			set_weights(client_model, global_w)
+			optimizer = optim.SGD(client_model.parameters(), lr=0.01)
+			loader = load_dataset(dataset_name, data_dir, batch_size=batch_size, train=True, indices=indices_split[c])
+			client_model.train()
+			for _ in range(local_epochs):
+				for x, y in loader:
+					x, y = x.to(device), y.to(device)
+					optimizer.zero_grad()
+					out = client_model(x)
+					loss = fedprox_loss(out, y, client_model, global_w, mu)
+					loss.backward()
+					optimizer.step()
+			local_weights.append(get_weights(client_model))
+		avg_weights = average_weights(local_weights)
+		set_weights(global_model, avg_weights)
+		print(f"FedProx Round {rnd+1} complete.")
+	return global_model
+
+def evaluate(model, data_dir="../data/MNIST", batch_size=32, dataset_name="MNIST"):
+	# Force CPU usage
+	device = torch.device("cpu")
+	model = model.to(device)
+	loader = load_dataset(dataset_name, data_dir, batch_size=batch_size, train=False)
+	model.eval()
+	correct, total = 0, 0
+	with torch.no_grad():
+		for x, y in loader:
+			x, y = x.to(device), y.to(device)
+			out = model(x)
+			pred = out.argmax(dim=1)
+			correct += (pred == y).sum().item()
+			total += y.size(0)
+	acc = correct / total
+	print(f"Test Accuracy: {acc:.4f}")
+	return acc

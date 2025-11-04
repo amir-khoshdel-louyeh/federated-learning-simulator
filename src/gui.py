@@ -1,5 +1,3 @@
-
-
 import tkinter as tk
 from tkinter import ttk, scrolledtext
 import threading
@@ -10,15 +8,9 @@ import io
 
 sys.path.append(os.path.dirname(__file__))
 
-import fedavg
-import fedopt
-import fedper
-import fedprox
-
-import fedsgd
-import split_learning
-from partition_utils import split_indices_iid, split_indices_non_iid
-import result as result_module
+from aggregation_algorithms import fedavg, fedopt, fedprox, fednova, scaffold, clustered_fl, personalized_fl
+from data import split_indices_iid, split_indices_non_iid
+from evaluation import print_sorted_results
 
 def get_algo_func(algo, params):
 	partition = params.get('partition', 'IID')
@@ -27,14 +19,16 @@ def get_algo_func(algo, params):
 		return lambda: fedavg.train_fedavg(num_clients=params['clients'], num_rounds=params['rounds'], local_epochs=params['local_epochs'], batch_size=params['batch_size'], partition=partition, dataset_name=dataset_name)
 	if algo == "FedOpt":
 		return lambda: fedopt.train_fedopt(num_clients=params['clients'], num_rounds=params['rounds'], local_epochs=params['local_epochs'], batch_size=params['batch_size'], partition=partition, dataset_name=dataset_name)
-	if algo == "FedPer":
-		return lambda: fedper.train_fedper(num_clients=params['clients'], num_rounds=params['rounds'], local_epochs=params['local_epochs'], batch_size=params['batch_size'], partition=partition, dataset_name=dataset_name)
 	if algo == "FedProx":
 		return lambda: fedprox.train_fedprox(num_clients=params['clients'], num_rounds=params['rounds'], local_epochs=params['local_epochs'], batch_size=params['batch_size'], partition=partition, dataset_name=dataset_name)
-	if algo == "FedSGD":
-		return lambda: fedsgd.train_fedsgd(num_clients=params['clients'], num_rounds=params['rounds'], batch_size=params['batch_size'], partition=partition, dataset_name=dataset_name)
-	if algo == "Split Learning":
-		return lambda: split_learning.train_split_learning(num_epochs=params['rounds'], batch_size=params['batch_size'], dataset_name=dataset_name)
+	if algo == "FedNova":
+		return lambda: fednova.train_fednova(num_clients=params['clients'], num_rounds=params['rounds'], local_epochs=params['local_epochs'], batch_size=params['batch_size'], partition=partition, dataset_name=dataset_name)
+	if algo == "SCAFFOLD":
+		return lambda: scaffold.train_scaffold(num_clients=params['clients'], num_rounds=params['rounds'], local_epochs=params['local_epochs'], batch_size=params['batch_size'], partition=partition, dataset_name=dataset_name)
+	if algo == "Clustered FL":
+		return lambda: clustered_fl.train_clustered_fl(num_clients=params['clients'], num_rounds=params['rounds'], local_epochs=params['local_epochs'], batch_size=params['batch_size'], partition=partition, dataset_name=dataset_name)
+	if algo == "Personalized FL":
+		return lambda: personalized_fl.train_personalized_fl(num_clients=params['clients'], num_rounds=params['rounds'], local_epochs=params['local_epochs'], batch_size=params['batch_size'], partition=partition, dataset_name=dataset_name)
 
 def get_eval_func(algo):
 	def get_eval_with_dataset(func):
@@ -43,14 +37,16 @@ def get_eval_func(algo):
 		return get_eval_with_dataset(fedavg.evaluate)
 	if algo == "FedOpt":
 		return get_eval_with_dataset(fedopt.evaluate)
-	if algo == "FedPer":
-		return lambda models: [fedper.evaluate(m, dataset_name=dataset_var.get()) for m in models]
 	if algo == "FedProx":
 		return get_eval_with_dataset(fedprox.evaluate)
-	if algo == "FedSGD":
-		return get_eval_with_dataset(fedsgd.evaluate)
-	if algo == "Split Learning":
-		return lambda tup: split_learning.evaluate(*tup, dataset_name=dataset_var.get())
+	if algo == "FedNova":
+		return get_eval_with_dataset(fednova.evaluate)
+	if algo == "SCAFFOLD":
+		return get_eval_with_dataset(scaffold.evaluate)
+	if algo == "Clustered FL":
+		return lambda models: clustered_fl.evaluate(models, dataset_name=dataset_var.get())
+	if algo == "Personalized FL":
+		return lambda models: personalized_fl.evaluate(models, dataset_name=dataset_var.get())
 
 def run_algorithm(algo, params, output_box):
 	output_box.insert(tk.END, f"Running {algo} with params: {params}\n")
@@ -77,7 +73,7 @@ def run_algorithm(algo, params, output_box):
 		sys.stdout = old_stdout
 
 def run_all_algorithms(params, output_box):
-	algos = ["FedAvg", "FedOpt", "FedPer", "FedProx", "FedSGD"]
+	algos = ["FedAvg", "FedOpt", "FedProx", "FedNova", "SCAFFOLD", "Clustered FL", "Personalized FL"]
 	results = {}
 	for algo in algos:
 		output_box.insert(tk.END, f"\n--- Running {algo} ---\n")
@@ -121,7 +117,7 @@ def run_all_algorithms(params, output_box):
 	output_box.insert(tk.END, format_sorted_results(results))
 	output_box.see(tk.END)
 	# Print sorted results to terminal as well
-	result_module.print_sorted_results(results)
+	print_sorted_results(results)
 
 def on_run():
 	algo = algo_var.get()
@@ -170,7 +166,7 @@ mainframe.pack(fill=tk.BOTH, expand=True)
 ttk.Label(mainframe, text="Select Algorithm:").pack(anchor=tk.W)
 algo_var = tk.StringVar(value="FedAvg")
 algo_menu = ttk.Combobox(mainframe, textvariable=algo_var, state="readonly")
-algo_menu['values'] = ["FedAvg", "FedOpt", "FedPer", "FedProx", "FedSGD", "Split Learning"]
+algo_menu['values'] = ["FedAvg", "FedOpt", "FedProx", "FedNova", "SCAFFOLD", "Clustered FL", "Personalized FL"]
 algo_menu.pack(fill=tk.X, pady=5)
 
 # Dataset selection (after algorithm selection)
