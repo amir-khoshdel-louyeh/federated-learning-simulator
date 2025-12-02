@@ -1,11 +1,7 @@
-#!/usr/bin/env python3
- 
 import os
 import tkinter as tk
 from tkinter import messagebox
 
-# Reduce TensorFlow noisy logs and prevent GPU discovery if CUDA is not configured.
-# These must be set before importing tensorflow.
 os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
@@ -14,14 +10,13 @@ import tensorflow as tf
 
 
 def load_mnist(subset=3000, test_size=1000):
-    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
-    x_train = x_train.astype("float32") / 255.0
-    x_test = x_test.astype("float32") / 255.0
-    return x_train[:subset], y_train[:subset], x_test[:test_size], y_test[:test_size]
+    (train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.mnist.load_data()
+    train_images = train_images.astype("float32") / 255.0
+    test_images = test_images.astype("float32") / 255.0
+    return train_images[:subset], train_labels[:subset], test_images[:test_size], test_labels[:test_size]
 
 
 def make_model():
-    # Use Functional API with an explicit Input to avoid the Flatten input_shape warning.
     inputs = tf.keras.Input(shape=(28, 28))
     x = tf.keras.layers.Flatten()(inputs)
     x = tf.keras.layers.Dense(64, activation="relu")(x)
@@ -39,19 +34,19 @@ def train_centralized(x_train, y_train, x_test, y_test):
 
 
 def federated_average(x_train, y_train, x_test, y_test, clients=3, rounds=3, full_data_per_client=False):
-    n = len(x_train)
+    len_xtrain = len(x_train)
     if full_data_per_client:
-        # give each client the full dataset (duplicate data across clients)
-        shards = [np.arange(n) for _ in range(clients)]
+        shards = []
+        for client_id in range(clients):
+            shards.append(np.arange(len_xtrain))
     else:
-        idx = np.random.permutation(n)
+        idx = np.random.permutation(len_xtrain)
         shards = np.array_split(idx, clients)
 
-    # initialize global model
     global_model = make_model()
     global_weights = global_model.get_weights()
 
-    for _ in range(rounds):
+    for i in range(rounds):
         client_weights = []
         for shard in shards:
             local = make_model()
@@ -59,7 +54,6 @@ def federated_average(x_train, y_train, x_test, y_test, clients=3, rounds=3, ful
             local.fit(x_train[shard], y_train[shard], epochs=1, batch_size=64, verbose=0)
             client_weights.append(local.get_weights())
 
-        # average weights
         new_weights = []
         for weights in zip(*client_weights):
             new_weights.append(np.mean(weights, axis=0))
@@ -73,21 +67,20 @@ def federated_average(x_train, y_train, x_test, y_test, clients=3, rounds=3, ful
 def run_demo(btn, label):
     btn.config(state=tk.DISABLED)
     label.config(text="Loading and training... (this may take a minute)")
-    # read parameters from button attributes (set by the GUI on click)
     subset = getattr(btn, "subset", 3000)
     test_size = getattr(btn, "test_size", 1000)
     clients = getattr(btn, "clients", 3)
     full_per_client = getattr(btn, "full_per_client", False)
 
     try:
-        x_tr, y_tr, x_ts, y_ts = load_mnist(subset=subset, test_size=test_size)
+        train_images, train_labels, test_images, test_labels = load_mnist(subset=subset, test_size=test_size)
     except Exception as e:
         messagebox.showerror("Error", f"Failed to load MNIST: {e}")
         btn.config(state=tk.NORMAL)
         return
 
-    acc_c = train_centralized(x_tr, y_tr, x_ts, y_ts)
-    acc_f = federated_average(x_tr, y_tr, x_ts, y_ts, clients=clients, full_data_per_client=full_per_client)
+    acc_c = train_centralized(train_images, train_labels, test_images, test_labels)
+    acc_f = federated_average(train_images, train_labels, test_images, test_labels, clients=clients, full_data_per_client=full_per_client)
 
     label.config(text=f"Centralized acc: {acc_c:.4f}    Federated acc: {acc_f:.4f}")
     btn.config(state=tk.NORMAL)
@@ -97,10 +90,8 @@ def main():
     root = tk.Tk()
     root.title("Simple MNIST: Centralized vs Federated")
 
-    # make the window a bit larger for controls
     root.geometry("560x280")
 
-    # Top controls frame
     top = tk.Frame(root)
     top.pack(padx=12, pady=(10, 4), fill=tk.X)
 
@@ -119,7 +110,6 @@ def main():
     clients_entry.insert(0, "3")
     clients_entry.grid(row=0, column=5, padx=(6, 0))
 
-    # Checkbox: give full dataset to each client
     full_var = tk.BooleanVar(value=False)
     chk = tk.Checkbutton(root, text="Give full dataset to each client", variable=full_var)
     chk.pack(padx=12, pady=(6, 0), anchor=tk.W)
@@ -129,7 +119,6 @@ def main():
     lbl = tk.Label(root, text="Ready")
     lbl.pack(padx=12, pady=(0, 12))
 
-    # attach parameter reading to the button so run_demo can access them simply
     def on_click():
         try:
             btn.subset = int(ds_entry.get())
