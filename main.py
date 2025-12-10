@@ -5,63 +5,11 @@ from tkinter import messagebox
 os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
-import numpy as np
-import tensorflow as tf
-
-
-def load_mnist(subset=3000, test_size=1000):
-    (train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.mnist.load_data()
-    train_images = train_images.astype("float32") / 255.0
-    test_images = test_images.astype("float32") / 255.0
-    return train_images[:subset], train_labels[:subset], test_images[:test_size], test_labels[:test_size]
-
-
-def make_model():
-    inputs = tf.keras.Input(shape=(28, 28))
-    x = tf.keras.layers.Flatten()(inputs)
-    x = tf.keras.layers.Dense(64, activation="relu")(x)
-    outputs = tf.keras.layers.Dense(10, activation="softmax")(x)
-    model = tf.keras.Model(inputs=inputs, outputs=outputs)
-    model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
-    return model
-
-
-def train_centralized(x_train, y_train, x_test, y_test):
-    model = make_model()
-    model.fit(x_train, y_train, epochs=3, batch_size=64, verbose=0)
-    loss, acc = model.evaluate(x_test, y_test, verbose=0)
-    return float(acc)
-
-
-def federated_average(x_train, y_train, x_test, y_test, clients=3, rounds=3, full_data_per_client=False):
-    len_xtrain = len(x_train)
-    if full_data_per_client:
-        shards = []
-        for client_id in range(clients):
-            shards.append(np.arange(len_xtrain))
-    else:
-        idx = np.random.permutation(len_xtrain)
-        shards = np.array_split(idx, clients)
-
-    global_model = make_model()
-    global_weights = global_model.get_weights()
-
-    for i in range(rounds):
-        client_weights = []
-        for shard in shards:
-            local = make_model()
-            local.set_weights(global_weights)
-            local.fit(x_train[shard], y_train[shard], epochs=1, batch_size=64, verbose=0)
-            client_weights.append(local.get_weights())
-
-        new_weights = []
-        for weights in zip(*client_weights):
-            new_weights.append(np.mean(weights, axis=0))
-        global_weights = new_weights
-
-    global_model.set_weights(global_weights)
-    loss, acc = global_model.evaluate(x_test, y_test, verbose=0)
-    return float(acc)
+from model import load_mnist
+from centralized import train_centralized
+from federated_average import federated_average
+from fedprox import fedprox
+from scaffold import scaffold
 
 
 def run_demo(btn, label):
@@ -79,10 +27,46 @@ def run_demo(btn, label):
         btn.config(state=tk.NORMAL)
         return
 
-    acc_c = train_centralized(train_images, train_labels, test_images, test_labels)
-    acc_f = federated_average(train_images, train_labels, test_images, test_labels, clients=clients, full_data_per_client=full_per_client)
+    results = []
 
-    label.config(text=f"Centralized acc: {acc_c:.4f}    Federated acc: {acc_f:.4f}")
+    # Centralized
+    if getattr(btn, "run_centralized", True):
+        try:
+            acc = train_centralized(train_images, train_labels, test_images, test_labels)
+            results.append(("Centralized", acc))
+        except Exception as e:
+            messagebox.showerror("Error", f"Centralized training failed: {e}")
+
+    # FedAvg
+    if getattr(btn, "run_fedavg", True):
+        try:
+            acc = federated_average(train_images, train_labels, test_images, test_labels, clients=clients, full_data_per_client=full_per_client)
+            results.append(("FedAvg", acc))
+        except Exception as e:
+            messagebox.showerror("Error", f"FedAvg training failed: {e}")
+
+    # FedProx
+    if getattr(btn, "run_fedprox", False):
+        try:
+            acc = fedprox(train_images, train_labels, test_images, test_labels, clients=clients, full_data_per_client=full_per_client)
+            results.append(("FedProx", acc))
+        except Exception as e:
+            messagebox.showerror("Error", f"FedProx training failed: {e}")
+
+    # SCAFFOLD
+    if getattr(btn, "run_scaffold", False):
+        try:
+            acc = scaffold(train_images, train_labels, test_images, test_labels, clients=clients, full_data_per_client=full_per_client)
+            results.append(("SCAFFOLD", acc))
+        except Exception as e:
+            messagebox.showerror("Error", f"SCAFFOLD training failed: {e}")
+
+    if not results:
+        label_text = "No algorithm selected."
+    else:
+        label_text = "    ".join(f"{name} acc: {acc:.4f}" for name, acc in results)
+
+    label.config(text=label_text)
     btn.config(state=tk.NORMAL)
 
 
@@ -114,6 +98,23 @@ def main():
     chk = tk.Checkbutton(root, text="Give full dataset to each client", variable=full_var)
     chk.pack(padx=12, pady=(6, 0), anchor=tk.W)
 
+    # Algorithms selection
+    alg_frame = tk.Frame(root)
+    alg_frame.pack(padx=12, pady=(6, 0), anchor=tk.W)
+    tk.Label(alg_frame, text="Algorithms:").grid(row=0, column=0, sticky=tk.W)
+    central_var = tk.BooleanVar(value=True)
+    fedavg_var = tk.BooleanVar(value=True)
+    fedprox_var = tk.BooleanVar(value=False)
+    scaffold_var = tk.BooleanVar(value=False)
+    cb1 = tk.Checkbutton(alg_frame, text="Centralized", variable=central_var)
+    cb2 = tk.Checkbutton(alg_frame, text="FedAvg", variable=fedavg_var)
+    cb3 = tk.Checkbutton(alg_frame, text="FedProx", variable=fedprox_var)
+    cb4 = tk.Checkbutton(alg_frame, text="SCAFFOLD", variable=scaffold_var)
+    cb1.grid(row=0, column=1, padx=(8, 4))
+    cb2.grid(row=0, column=2, padx=(8, 4))
+    cb3.grid(row=0, column=3, padx=(8, 4))
+    cb4.grid(row=0, column=4, padx=(8, 4))
+
     btn = tk.Button(root, text="Run demo (loads MNIST and trains)", width=48)
     btn.pack(padx=12, pady=(8, 6))
     lbl = tk.Label(root, text="Ready")
@@ -133,6 +134,11 @@ def main():
         except Exception:
             btn.clients = 3
         btn.full_per_client = bool(full_var.get())
+        # algorithm selections
+        btn.run_centralized = bool(central_var.get())
+        btn.run_fedavg = bool(fedavg_var.get())
+        btn.run_fedprox = bool(fedprox_var.get())
+        btn.run_scaffold = bool(scaffold_var.get())
         run_demo(btn, lbl)
 
     btn.config(command=on_click)
