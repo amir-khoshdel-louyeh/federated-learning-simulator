@@ -1,10 +1,12 @@
+import time
 import numpy as np
 import tensorflow as tf
 
 from model import make_model
+from metrics import compute_round_metrics
 
 
-def scaffold(x_train, y_train, x_test, y_test, clients=3, rounds=3, local_epochs=1, batch_size=64, lr=0.001, full_data_per_client=False):
+def scaffold(x_train, y_train, x_test, y_test, clients=3, rounds=3, local_epochs=1, batch_size=64, lr=0.001, full_data_per_client=False, report=None):
     """A straightforward SCAFFOLD implementation.
 
     Notes / simplifications:
@@ -27,6 +29,9 @@ def scaffold(x_train, y_train, x_test, y_test, clients=3, rounds=3, local_epochs
     # initialize global model and weights
     global_model = make_model()
     global_weights = global_model.get_weights()
+    comm_cost = 0
+    prev_acc = None
+    prev_global_weights = [np.copy(w) for w in global_weights]
 
     # initialize server control variate c and per-client c_i as zero arrays matching weights
     c = [np.zeros_like(w) for w in global_weights]
@@ -35,6 +40,7 @@ def scaffold(x_train, y_train, x_test, y_test, clients=3, rounds=3, local_epochs
     loss_fn = tf.keras.losses.SparseCategoricalCrossentropy()
 
     for rnd in range(rounds):
+        round_start = time.perf_counter()
         client_weights = []
         new_c_i_list = []
 
@@ -128,6 +134,24 @@ def scaffold(x_train, y_train, x_test, y_test, clients=3, rounds=3, local_epochs
         # set for next round
         global_weights = new_weights
         c_i_list = new_c_i_list
+
+        metrics, prev_acc, prev_global_weights, comm_cost = compute_round_metrics(
+            "SCAFFOLD",
+            rnd + 1,
+            round_start,
+            global_model,
+            x_test,
+            y_test,
+            prev_acc,
+            prev_global_weights,
+            global_weights,
+            clients,
+            comm_cost,
+            local_weights_list=client_weights,
+            reference_weights=global_weights,
+        )
+        if callable(report):
+            report("SCAFFOLD", rnd + 1, metrics)
 
     # final evaluation
     global_model.set_weights(global_weights)

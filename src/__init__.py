@@ -1,1 +1,0 @@
-# Federated Learning Simulator package

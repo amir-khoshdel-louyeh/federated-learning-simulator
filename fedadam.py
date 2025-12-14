@@ -1,10 +1,12 @@
+import time
 import numpy as np
 from model import make_model
+from metrics import compute_round_metrics
 
 
 def fedadam(x_train, y_train, x_test, y_test, clients=3, rounds=3, local_epochs=1, 
             batch_size=64, server_lr=0.01, beta1=0.9, beta2=0.999, tau=1e-3, 
-            full_data_per_client=False):
+            full_data_per_client=False, report=None):
     """FedAdam: Adaptive Federated Optimization with server-side Adam.
     
     Uses momentum (beta1) and adaptive learning rates (beta2) on the server
@@ -30,12 +32,16 @@ def fedadam(x_train, y_train, x_test, y_test, clients=3, rounds=3, local_epochs=
     # Initialize global model
     global_model = make_model()
     global_weights = global_model.get_weights()
+    comm_cost = 0
+    prev_acc = None
+    prev_global_weights = [np.copy(w) for w in global_weights]
     
     # Initialize Adam moments (server-side)
     m_t = [np.zeros_like(w) for w in global_weights]  # First moment
     v_t = [np.zeros_like(w) for w in global_weights]  # Second moment
     
     for t in range(1, rounds + 1):
+        round_start = time.perf_counter()
         client_weights = []
         
         for shard in shards:
@@ -79,6 +85,24 @@ def fedadam(x_train, y_train, x_test, y_test, clients=3, rounds=3, local_epochs=
             v_t[i] = v_new
         
         global_weights = new_global_weights
+
+        metrics, prev_acc, prev_global_weights, comm_cost = compute_round_metrics(
+            "FedAdam",
+            t,
+            round_start,
+            global_model,
+            x_test,
+            y_test,
+            prev_acc,
+            prev_global_weights,
+            global_weights,
+            clients,
+            comm_cost,
+            local_weights_list=client_weights,
+            reference_weights=avg_weights,
+        )
+        if callable(report):
+            report("FedAdam", t, metrics)
     
     # Final evaluation
     global_model.set_weights(global_weights)

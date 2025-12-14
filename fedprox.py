@@ -1,10 +1,12 @@
+import time
 import numpy as np
 import tensorflow as tf
 
 from model import make_model
+from metrics import compute_round_metrics
 
 
-def fedprox(x_train, y_train, x_test, y_test, clients=3, rounds=3, mu=0.01, local_epochs=1, batch_size=64, full_data_per_client=False):
+def fedprox(x_train, y_train, x_test, y_test, clients=3, rounds=3, mu=0.01, local_epochs=1, batch_size=64, full_data_per_client=False, report=None):
     """Simple FedProx implementation.
 
     - Splits `x_train` among `clients` (unless `full_data_per_client=True`).
@@ -28,10 +30,14 @@ def fedprox(x_train, y_train, x_test, y_test, clients=3, rounds=3, mu=0.01, loca
     # initialize global model and weights
     global_model = make_model()
     global_weights = global_model.get_weights()
+    comm_cost = 0
+    prev_acc = None
+    prev_global_weights = [np.copy(w) for w in global_weights]
 
     loss_fn = tf.keras.losses.SparseCategoricalCrossentropy()
 
     for r in range(rounds):
+        round_start = time.perf_counter()
         client_weights = []
 
         # convert global weights to tensors for proximal term
@@ -90,6 +96,24 @@ def fedprox(x_train, y_train, x_test, y_test, clients=3, rounds=3, mu=0.01, loca
         for weights in zip(*client_weights):
             new_weights.append(np.mean(weights, axis=0))
         global_weights = new_weights
+
+        metrics, prev_acc, prev_global_weights, comm_cost = compute_round_metrics(
+            "FedProx",
+            r + 1,
+            round_start,
+            global_model,
+            x_test,
+            y_test,
+            prev_acc,
+            prev_global_weights,
+            global_weights,
+            clients,
+            comm_cost,
+            local_weights_list=client_weights,
+            reference_weights=global_weights,
+        )
+        if callable(report):
+            report("FedProx", r + 1, metrics)
 
     # evaluate
     global_model.set_weights(global_weights)
