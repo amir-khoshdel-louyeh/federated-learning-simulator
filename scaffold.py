@@ -96,19 +96,10 @@ def scaffold(x_train, y_train, x_test, y_test, clients=3, rounds=3, local_epochs
             w_local = local.get_weights()
             client_weights.append(w_local)
 
-            # update client control variate c_i
+            # update client control variate c_i using SCAFFOLD rule:
+            # c_i' = c_i - c + (1/(steps*lr)) * (w_global - w_local)
             old_c_i = c_i_list[client_idx]
-            new_c_i = []
-            # formula: c_i' = c_i - c + (1/(steps*lr)) * (w_global - w_local)
             scale = 1.0 / (max(1, steps) * lr)
-            for gw, wloc, ci in zip(global_weights, w_local, old_c_i):
-                delta = gw - wloc
-                new_ci = ci - gw*0  # placeholder to copy shape; we'll compute below
-                # compute numeric arrays
-                new_ci = ci - np.array(c[0])  # temporary, will be replaced per-entry
-                break
-
-            # The above per-entry loop is easier to implement explicitly:
             new_c_i = []
             for gw, wloc, ci, gc in zip(global_weights, w_local, old_c_i, c):
                 new_ci = ci - gc + scale * (gw - wloc)

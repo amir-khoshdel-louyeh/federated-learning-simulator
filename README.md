@@ -1,40 +1,46 @@
-Federated Learning Simulator (FedAvg)
+Federated Learning Simulator
 
-This is a small federated learning simulation implemented in Python using PyTorch.
+This project provides a simple GUI-based simulator for centralized and federated training on MNIST using TensorFlow/Keras.
 
 Features
-- Uses MNIST by default (small dataset, easy to run).
-- Splits dataset across simulated clients (IID or Non-IID).
-- Each client trains a local neural network.
-- Server aggregates client weights using FedAvg.
-- Evaluates the global model after each communication round.
-- Saves an accuracy-vs-round plot to `output/accuracy.png`.
+- MNIST loader with configurable train/val/test sizes.
+- Centralized training baseline.
+- Federated algorithms: FedAvg, FedProx, SCAFFOLD, FedAdam, FedYogi, FedAdagrad, FedNova.
+- Per-round metrics tracked: Accuracy, Convergence, Communication Cost, Stability/Variance, Training Time, Velocity.
+- Result persistence to `result.txt` and embedded comparison graphs inside the GUI.
 
-Quick start (after creating a venv):
+Quick start
 
-1) Install dependencies
+1) Create a virtual environment and install dependencies
 
 ```bash
+python -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-2) Run a quick smoke test (small subset, 2 clients, 1 round):
+2) Run the GUI
 
 ```bash
-python src/fedavg_simulator.py --clients 2 --rounds 1 --local-epochs 1 --quick
+python main.py
 ```
 
-Options
-- `--clients`: number of simulated clients
-- `--rounds`: communication rounds
-- `--local-epochs`: epochs each client trains per round
-- `--non-iid`: enable Non-IID split
-- `--frac`: fraction of clients sampled each round (default 1.0)
-- `--quick`: use small subsets for fast smoke tests
+Usage
+- Enter total dataset size; the app splits 80/10/10 into train/val/test.
+- Choose number of clients and rounds.
+- Optionally give full dataset to each client.
+- Select algorithms and click "Run selected algorithms".
+- After training, results are saved to `result.txt` and comparison plots are shown in a scrollable window.
 
-Files
-- `src/fedavg_simulator.py`: main simulator script
+Project structure
+- `main.py`: GUI and orchestration.
+- `model.py`: MNIST loader and model factory.
+- `centralized.py`: Centralized baseline.
+- `federated_average.py`, `fedprox.py`, `scaffold.py`, `fedadam.py`, `fedyogi.py`, `fedadagrad.py`, `fednova.py`: Federated algorithms.
+- `metrics.py`: Common metric computations.
+- `comparison.py`: Functions to generate comparison figures from `result.txt`.
+
 
 Notes
-- Uses CPU by default. Training can be slow with many rounds/clients.
-- For experimentation with Non-IID splits, run with `--non-iid` and try different client counts.
+- Training runs on CPU by default; set `CUDA_VISIBLE_DEVICES` accordingly if using GPU.
+- TensorFlow downloads MNIST on first run.
