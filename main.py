@@ -25,7 +25,7 @@ def main():
     root = tk.Tk()
     root.title("Simple MNIST: Centralized vs Federated")
 
-    root.geometry("640x400")
+    root.geometry("900x500")
 
     top = tk.Frame(root)
     top.pack(padx=12, pady=(10, 4), fill=tk.X)
