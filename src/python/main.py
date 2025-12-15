@@ -5,7 +5,7 @@ from tkinter import messagebox
 import subprocess
 from tkinter import Toplevel
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from comparison import read_results, generate_figures
+from comparison import generate_figures_from_paths
 
 os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
@@ -225,20 +225,40 @@ def main():
                     fednova(train_images, train_labels, test_images, test_labels,
                             clients=clients, rounds=rounds, full_data_per_client=full_per_client,
                             report=report)
-                # after all selected algorithms complete, write result.txt
+                # after all selected algorithms complete, write p_result.txt (and legacy result.txt) under results/
                 try:
-                    result_path = os.path.join(os.path.dirname(__file__), "result.txt")
-                    with open(result_path, "w") as f:
+                    base_dir = os.path.dirname(__file__)
+                    results_dir = os.path.normpath(os.path.join(base_dir, "..", "results"))
+                    os.makedirs(results_dir, exist_ok=True)
+                    p_result_path = os.path.join(results_dir, "p_result.txt")
+                    with open(p_result_path, "w") as f:
                         for algo_key, metrics_map in results_store.items():
                             # write as python-like dict per line: algo={...}
                             f.write(f"{algo_key}={metrics_map}\n")
-                    root.after(0, append_log, f"Saved results to {result_path}")
+                    # Also write legacy filename for existing tooling compatibility
+                    legacy_path = os.path.join(results_dir, "result.txt")
+                    try:
+                        with open(legacy_path, "w") as f2:
+                            for algo_key, metrics_map in results_store.items():
+                                f2.write(f"{algo_key}={metrics_map}\n")
+                    except Exception:
+                        pass
+                    root.after(0, append_log, f"Saved Python results to {p_result_path}")
                     # Embed comparison graphs inside the app
                     try:
-                        results = read_results(result_path)
+                        # Prefer p_result and include m_result if present, else fallback to legacy
+                        m_result_path = os.path.join(results_dir, "m_result.txt")
+                        paths = []
+                        if os.path.exists(p_result_path):
+                            paths.append(p_result_path)
+                        if os.path.exists(m_result_path):
+                            paths.append(m_result_path)
+                        if not paths and os.path.exists(legacy_path):
+                            paths.append(legacy_path)
+
                         def show_figs():
                             # Create figures on the main thread to avoid GUI warnings/errors
-                            figs = generate_figures(results)
+                            figs = generate_figures_from_paths(paths)
                             if not figs:
                                 append_log("No figures generated for comparison.")
                                 return
