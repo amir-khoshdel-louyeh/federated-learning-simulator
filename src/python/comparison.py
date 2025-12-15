@@ -1,5 +1,6 @@
 import os
 import ast
+import time
 from typing import Dict, List, Any, Optional, Tuple
 
 import matplotlib.pyplot as plt
@@ -52,7 +53,7 @@ def compare_line_plots(results: Dict[str, Dict[str, List[Any]]]):
         plt.grid(True, alpha=0.3)
         plt.legend()
         plt.tight_layout()
-        yield fig
+    yield fig
 
 
 
@@ -75,7 +76,28 @@ def _tag_results(results: Dict[str, Dict[str, List[Any]]], tag: str) -> Dict[str
     return tagged
 
 
-def generate_figures_from_paths(paths: Optional[List[str]] = None) -> List[Any]:
+def _sanitize_filename(name: str) -> str:
+    # Replace characters that are problematic in filenames
+    safe = (
+        name.replace(" ", "_")
+        .replace("/", "-")
+        .replace("\\", "-")
+        .replace(":", "-")
+        .replace("|", "-")
+    )
+    return "".join(c for c in safe if c.isalnum() or c in ("_", "-"))
+
+
+def _save_fig(fig: Any, save_dir: str, filename: str, image_format: str = "png", dpi: int = 120) -> None:
+    try:
+        os.makedirs(save_dir, exist_ok=True)
+        path = os.path.join(save_dir, f"{filename}.{image_format}")
+        fig.savefig(path, format=image_format, dpi=dpi, bbox_inches="tight")
+    except Exception as e:
+        print(f"Warning: failed to save figure {filename}: {e}")
+
+
+def generate_figures_from_paths(paths: Optional[List[str]] = None, *, save_dir: Optional[str] = None, image_format: str = "png") -> List[Any]:
     """Generate figures depending on availability of p_result.txt and m_result.txt (or provided paths).
 
     Behavior:
@@ -117,6 +139,14 @@ def generate_figures_from_paths(paths: Optional[List[str]] = None) -> List[Any]:
         elif base == "result.txt":
             legacy_only.append(p)
 
+    # Determine default save directory under src/graphs if not provided
+    src_dir_default = os.path.normpath(os.path.join(here, ".."))
+    graphs_dir_default = os.path.join(src_dir_default, "graphs")
+    if save_dir is None:
+        save_dir = graphs_dir_default
+
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+
     figs: List[Any] = []
 
     if p_path and m_path:
@@ -135,6 +165,9 @@ def generate_figures_from_paths(paths: Optional[List[str]] = None) -> List[Any]:
             plt.grid(True, alpha=0.3)
             plt.legend()
             plt.tight_layout()
+            # Save figure
+            metric_slug = _sanitize_filename(key)
+            _save_fig(fig, save_dir, f"{timestamp}__{metric_slug}__python", image_format)
             figs.append(fig)
         # 2) Matlab-only
         for key in METRICS_KEYS:
@@ -149,6 +182,9 @@ def generate_figures_from_paths(paths: Optional[List[str]] = None) -> List[Any]:
             plt.grid(True, alpha=0.3)
             plt.legend()
             plt.tight_layout()
+            # Save figure
+            metric_slug = _sanitize_filename(key)
+            _save_fig(fig, save_dir, f"{timestamp}__{metric_slug}__matlab", image_format)
             figs.append(fig)
         # 3) Combined overlay
         both = {}
@@ -166,6 +202,9 @@ def generate_figures_from_paths(paths: Optional[List[str]] = None) -> List[Any]:
             plt.grid(True, alpha=0.3)
             plt.legend()
             plt.tight_layout()
+            # Save figure
+            metric_slug = _sanitize_filename(key)
+            _save_fig(fig, save_dir, f"{timestamp}__{metric_slug}__both", image_format)
             figs.append(fig)
         return figs
 
@@ -175,8 +214,34 @@ def generate_figures_from_paths(paths: Optional[List[str]] = None) -> List[Any]:
         print("No results to compare. Run training first to generate m_result.txt or p_result.txt.")
         return figs
 
+    # Determine mode for naming
+    base = os.path.basename(chosen_path)
+    if base == "p_result.txt":
+        mode = "python"
+    elif base == "m_result.txt":
+        mode = "matlab"
+    elif base == "result.txt":
+        mode = "legacy"
+    else:
+        mode = "single"
+
     results = read_results(chosen_path)
-    for fig in compare_line_plots(results):
+    # Build and save figures per metric explicitly (don't rely on generator order)
+    for key in METRICS_KEYS:
+        fig = plt.figure(figsize=(9, 5))
+        title_mode = "Python" if mode == "python" else ("Matlab" if mode == "matlab" else "Results")
+        plt.title(f"Comparison: {key} — {title_mode}")
+        for algo, metrics in results.items():
+            vals = metrics.get(key, [])
+            if not vals:
+                continue
+            plt.plot(range(1, len(vals) + 1), vals, marker="o", label=algo)
+        plt.xlabel("Round")
+        plt.grid(True, alpha=0.3)
+        plt.legend()
+        plt.tight_layout()
+        metric_slug = _sanitize_filename(key)
+        _save_fig(fig, save_dir, f"{timestamp}__{metric_slug}__{mode}", image_format)
         figs.append(fig)
     return figs
 
@@ -191,7 +256,9 @@ def main():
         os.path.join(results_dir, "result.txt"),
         os.path.join(here, "result.txt"),
     ]
-    figs = generate_figures_from_paths([p for p in candidates if os.path.exists(p)])
+    # Save images into src/graphs by default
+    graphs_dir = os.path.join(os.path.normpath(os.path.join(here, "..")), "graphs")
+    figs = generate_figures_from_paths([p for p in candidates if os.path.exists(p)], save_dir=graphs_dir)
     if not figs:
         print("No results to compare. Run training first to generate m_result.txt or p_result.txt.")
         return
