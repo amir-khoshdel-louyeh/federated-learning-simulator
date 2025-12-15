@@ -94,8 +94,80 @@ def main():
 
     # New Run button
     btn_run = tk.Button(root, text="Run selected algorithms", width=32)
-    btn_run.pack(padx=12, pady=(0, 10))
+    btn_run.pack(padx=12, pady=(0, 6))
 
+    # Compare results button (same size), performs comparison on demand
+    btn_compare = tk.Button(root, text="Compare results", width=32)
+    btn_compare.pack(padx=12, pady=(0, 10))
+
+
+    def show_figs(paths=None):
+        try:
+            here = os.path.dirname(__file__)
+            results_dir = os.path.normpath(os.path.join(here, "..", "results"))
+            # Prefer p_result and include m_result if present, else fallback to legacy
+            if paths is None:
+                candidates = [
+                    os.path.join(results_dir, "p_result.txt"),
+                    os.path.join(results_dir, "m_result.txt"),
+                    os.path.join(results_dir, "result.txt"),
+                    os.path.join(here, "result.txt"),
+                ]
+                paths = [p for p in candidates if os.path.exists(p)]
+
+            figs = generate_figures_from_paths(paths)
+            if not figs:
+                out_text.insert(tk.END, "No figures generated for comparison. Ensure results exist in src/results.\n")
+                out_text.see(tk.END)
+                return
+            win = Toplevel(root)
+            win.title("Algorithm Comparison")
+            win.geometry("900x700")
+
+            # Scrollable area setup
+            container = tk.Frame(win)
+            container.pack(fill=tk.BOTH, expand=True)
+
+            scroll_y = tk.Scrollbar(container, orient=tk.VERTICAL)
+            scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
+
+            scroll_x = tk.Scrollbar(container, orient=tk.HORIZONTAL)
+            scroll_x.pack(side=tk.BOTTOM, fill=tk.X)
+
+            canvas_widget = tk.Canvas(container, yscrollcommand=scroll_y.set, xscrollcommand=scroll_x.set)
+            canvas_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            scroll_y.config(command=canvas_widget.yview)
+            scroll_x.config(command=canvas_widget.xview)
+
+            inner = tk.Frame(canvas_widget)
+            # add inner frame to canvas
+            canvas_widget.create_window((0, 0), window=inner, anchor="nw")
+
+            # Add each figure to the inner frame
+            for fig in figs:
+                fig_canvas = FigureCanvasTkAgg(fig, master=inner)
+                fig_canvas.draw()
+                widget = fig_canvas.get_tk_widget()
+                widget.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+
+            # Update scroll region when inner frame changes size
+            def on_configure(event=None):
+                canvas_widget.configure(scrollregion=canvas_widget.bbox("all"))
+            inner.bind("<Configure>", on_configure)
+
+            out_text.insert(tk.END, "Displayed comparison graphs (also saved to src/graphs).\n")
+            out_text.see(tk.END)
+        except Exception as e:
+            out_text.insert(tk.END, f"Failed to display comparison: {e}\n")
+            out_text.see(tk.END)
+
+    def on_compare_click():
+        btn_compare.config(state=tk.DISABLED)
+        try:
+            # Create figures on the main thread
+            show_figs()
+        finally:
+            btn_compare.config(state=tk.NORMAL)
 
     # Run button click handler
     def on_run_click():
@@ -165,6 +237,8 @@ def main():
             )
             # ensure UI update on main thread
             root.after(0, append_log, line)
+
+        
 
         def worker():
             # Compute split sizes
@@ -243,66 +317,7 @@ def main():
                                 f2.write(f"{algo_key}={metrics_map}\n")
                     except Exception:
                         pass
-                    root.after(0, append_log, f"Saved Python results to {p_result_path}")
-                    # Embed comparison graphs inside the app
-                    try:
-                        # Prefer p_result and include m_result if present, else fallback to legacy
-                        m_result_path = os.path.join(results_dir, "m_result.txt")
-                        paths = []
-                        if os.path.exists(p_result_path):
-                            paths.append(p_result_path)
-                        if os.path.exists(m_result_path):
-                            paths.append(m_result_path)
-                        if not paths and os.path.exists(legacy_path):
-                            paths.append(legacy_path)
-
-                        def show_figs():
-                            # Create figures on the main thread to avoid GUI warnings/errors
-                            figs = generate_figures_from_paths(paths)
-                            if not figs:
-                                append_log("No figures generated for comparison.")
-                                return
-                            win = Toplevel(root)
-                            win.title("Algorithm Comparison")
-                            win.geometry("900x700")
-
-                            # Scrollable area setup
-                            container = tk.Frame(win)
-                            container.pack(fill=tk.BOTH, expand=True)
-
-                            scroll_y = tk.Scrollbar(container, orient=tk.VERTICAL)
-                            scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
-
-                            scroll_x = tk.Scrollbar(container, orient=tk.HORIZONTAL)
-                            scroll_x.pack(side=tk.BOTTOM, fill=tk.X)
-
-                            canvas_widget = tk.Canvas(container, yscrollcommand=scroll_y.set, xscrollcommand=scroll_x.set)
-                            canvas_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-                            scroll_y.config(command=canvas_widget.yview)
-                            scroll_x.config(command=canvas_widget.xview)
-
-                            inner = tk.Frame(canvas_widget)
-                            # add inner frame to canvas
-                            canvas_widget.create_window((0, 0), window=inner, anchor="nw")
-
-                            canvases = []
-                            # Add each figure to the inner frame
-                            for fig in figs:
-                                fig_canvas = FigureCanvasTkAgg(fig, master=inner)
-                                fig_canvas.draw()
-                                widget = fig_canvas.get_tk_widget()
-                                widget.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
-                                canvases.append(fig_canvas)
-
-                            # Update scroll region when inner frame changes size
-                            def on_configure(event=None):
-                                canvas_widget.configure(scrollregion=canvas_widget.bbox("all"))
-                            inner.bind("<Configure>", on_configure)
-
-                            append_log("Displayed comparison graphs inside the app (scroll enabled).")
-                        root.after(0, show_figs)
-                    except Exception as e:
-                        root.after(0, append_log, f"Failed to embed comparison: {e}")
+                    root.after(0, append_log, f"Saved Python results to {p_result_path}.\nClick 'Compare results' to view graphs.")
                 except Exception as e:
                     root.after(0, append_log, f"Failed to save results: {e}")
             finally:
@@ -327,6 +342,7 @@ def main():
     update_size_preview()
 
     btn_run.config(command=on_run_click)
+    btn_compare.config(command=on_compare_click)
 
     root.mainloop()
 
