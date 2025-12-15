@@ -1,2 +1,11 @@
 /src/python/venv
+/venv/
 /src/python/__pycache__
+# Generated results and figures
+/src/results/
+/src/graphs/
+# MATLAB downloads/cache
+/src/matlab/data/
+# Python caches
+**/__pycache__/
+*.pyc

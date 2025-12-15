@@ -13,6 +13,7 @@ A simple simulator for centralized and federated training on MNIST with both Pyt
 - Results saved to text files for easy cross-language comparison
 - Comparison tool that renders:
 	- Python-only, MATLAB-only, and combined overlay plots (when both results exist)
+		- Figures are automatically saved to `src/graphs/`
 
 ## Repository structure
 
@@ -91,10 +92,10 @@ Usage in the GUI:
 
 ## MATLAB — how to run
 
-In MATLAB or MATLAB Online:
+In MATLAB or MATLAB Online (from the repository root):
 
 ```matlab
-cd('/path/to/repo/src/matlab')
+addpath(fullfile(pwd, 'src', 'matlab'))
 main
 ```
 
@@ -107,7 +108,7 @@ You’ll be prompted for:
 The script runs ALL algorithms and writes `src/results/m_result.txt`.
 
 Notes:
-- MNIST is downloaded on first run to `src/matlab/data/`.
+- MNIST is downloaded on first run to `src/matlab/data/` (relative to the MATLAB files).
 - The model is a small MLP (Flatten → Dense(64, ReLU) → Dense(10, Softmax)) with manual backprop and Adam updates (no toolboxes required).
 
 ## Comparing results and generating graphs
@@ -127,6 +128,12 @@ python src/python/comparison.py
 ```
 
 Or view embedded in the GUI after a Python run; it will look in `src/results/` for `p_result.txt` and `m_result.txt`.
+
+All generated figures are also saved under `src/graphs/` with filenames like:
+
+- `YYYYMMDD-HHMMSS__Accuracy__python.png`
+- `YYYYMMDD-HHMMSS__Accuracy__matlab.png`
+- `YYYYMMDD-HHMMSS__Accuracy__both.png`
 
 ## Tips and troubleshooting
 
