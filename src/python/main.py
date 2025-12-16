@@ -11,14 +11,14 @@ os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
 from model import load_mnist
-from centralized import train_centralized
-from federated_average import federated_average
-from fedprox import fedprox
-from scaffold import scaffold
-from fedadam import fedadam
-from fedyogi import fedyogi
-from fedadagrad import fedadagrad
-from fednova import fednova
+from algorithms.centralized import train_centralized
+from algorithms.fedavg import federated_average as fedavg
+from algorithms.fedprox import fedprox
+from algorithms.scaffold import scaffold
+from algorithms.fedadam import fedadam
+from algorithms.fedyogi import fedyogi
+from algorithms.fedadagrad import fedadagrad
+from algorithms.fednova import fednova
 
 
 def main():
@@ -272,9 +272,9 @@ def main():
                     })
 
                 if algs["FedAvg"]:
-                    federated_average(train_images, train_labels, test_images, test_labels,
-                                      clients=clients, rounds=rounds, full_data_per_client=full_per_client,
-                                      report=report)
+                    fedavg(train_images, train_labels, test_images, test_labels,
+                           clients=clients, rounds=rounds, full_data_per_client=full_per_client,
+                           report=report)
                 if algs["FedProx"]:
                     fedprox(train_images, train_labels, test_images, test_labels,
                             clients=clients, rounds=rounds, full_data_per_client=full_per_client,
