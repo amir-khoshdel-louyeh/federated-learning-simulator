@@ -1,6 +1,10 @@
 function main
 % MATLAB port of federated-learning-simulator to compare results with Python
 % Default run: Centralized + FedAvg. You can toggle flags below.
+    % Ensure subfolders (e.g., algorithms) are on the MATLAB path
+    here = fileparts(mfilename('fullpath'));
+    addpath(here);
+    addpath(fullfile(here, 'algorithms'));
 
     % Parameters (prompt user for inputs to match Python GUI behavior)
     try
@@ -94,7 +98,7 @@ function main
 
     if run_fedavg
         fprintf('Running FedAvg (clients=%d, rounds=%d)...\n', clients, rounds);
-        federated_average(train_images, train_labels, test_images, test_labels, 'clients', clients, 'rounds', rounds, 'full_data_per_client', full_data_per_client, 'report', @report);
+        fedavg(train_images, train_labels, test_images, test_labels, 'clients', clients, 'rounds', rounds, 'full_data_per_client', full_data_per_client, 'report', @report);
     end
 
     if run_fedprox

@@ -25,7 +25,7 @@ src/
 		model.py               # MNIST loader and model factory
 		metrics.py             # Common metric computations
 		centralized.py         # Centralized baseline
-		federated_average.py   # FedAvg
+		fedavg.py   		   # FedAvg
 		fedprox.py             # FedProx
 		scaffold.py            # SCAFFOLD
 		fedadam.py             # FedAdam (server-side Adam)

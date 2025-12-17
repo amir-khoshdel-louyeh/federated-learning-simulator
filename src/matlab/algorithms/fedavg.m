@@ -1,4 +1,4 @@
-function acc = federated_average(x_train, y_train, x_test, y_test, varargin)
+function acc = fedavg(x_train, y_train, x_test, y_test, varargin)
 % Federated Averaging (FedAvg) in MATLAB mirroring Python implementation.
 % Optional name-value:
 %  'clients' (default 3)
