@@ -50,8 +50,9 @@ src/
 
 ## Results files
 
-- Python GUI writes: `src/results/p_result.txt` (and also `src/results/result.txt` for legacy tools)
-- MATLAB runner writes: `src/results/m_result.txt`
+- Python GUI writes: `src/results/p_result.txt` (and also `src/results/result.txt` for legacy tools).
+- MATLAB runner writes: `src/results/m_result.txt`.
+- Legacy note: older versions may have written to a top-level `results/` folder. Current tools look in `src/results/`. If you have legacy files in `results/`, move them into `src/results/` to be picked up by the comparison tool.
 
 Format: one line per algorithm in the form
 
@@ -110,6 +111,10 @@ The script runs ALL algorithms and writes `src/results/m_result.txt`.
 Notes:
 - MNIST is downloaded on first run to `src/matlab/data/` (relative to the MATLAB files).
 - The model is a small MLP (Flatten → Dense(64, ReLU) → Dense(10, Softmax)) with manual backprop and Adam updates (no toolboxes required).
+- `main.m` automatically adds its `algorithms` subfolder to the MATLAB path, so functions like `fedavg`, `fedprox`, etc., resolve in MATLAB Online.
+
+Troubleshooting:
+- If you see "Unrecognized function or variable 'fedavg'", ensure your session has added `src/matlab` to the path (use the `addpath` line above) and then re-run `main`.
 
 ## Comparing results and generating graphs
 
