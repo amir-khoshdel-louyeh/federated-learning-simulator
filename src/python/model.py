@@ -50,3 +50,33 @@ def make_model():
     model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
     return model
 
+
+def load_fashion_mnist(train_size=3000, val_size=0, test_size=1000):
+    """Load Fashion-MNIST, normalize, and return train/val/test arrays with requested sizes.
+
+    Args:
+        train_size: Number of samples for training (from Fashion-MNIST training split).
+        val_size: Number of samples for validation (from remaining training split).
+        test_size: Number of samples for testing (from Fashion-MNIST test split).
+
+    Returns:
+        (train_images, train_labels, val_images, val_labels, test_images, test_labels)
+    """
+    (train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.fashion_mnist.load_data()
+    train_images = train_images.astype("float32") / 255.0
+    test_images = test_images.astype("float32") / 255.0
+
+    total_train = train_images.shape[0]
+    t_size = max(0, min(train_size, total_train))
+    v_size = max(0, min(val_size, max(0, total_train - t_size)))
+    te_size = max(0, min(test_size, test_images.shape[0]))
+
+    t_imgs = train_images[:t_size]
+    t_lbls = train_labels[:t_size]
+    v_imgs = train_images[t_size:t_size + v_size]
+    v_lbls = train_labels[t_size:t_size + v_size]
+    te_imgs = test_images[:te_size]
+    te_lbls = test_labels[:te_size]
+
+    return t_imgs, t_lbls, v_imgs, v_lbls, te_imgs, te_lbls
+

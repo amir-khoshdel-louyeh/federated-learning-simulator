@@ -10,7 +10,7 @@ from comparison import generate_figures_from_paths
 os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
-from model import load_mnist
+from model import load_mnist, load_fashion_mnist
 from algorithms.centralized import train_centralized
 from algorithms.fedavg import federated_average as fedavg
 from algorithms.fedprox import fedprox
@@ -262,7 +262,11 @@ def main():
             test_target = int(total_dataset * 0.1)
             val_target = total_dataset - train_target - test_target
             try:
-                train_images, train_labels, val_images, val_labels, test_images, test_labels = load_mnist(
+                if dataset_mode == "non_iid":
+                    loader = load_fashion_mnist
+                else:
+                    loader = load_mnist
+                train_images, train_labels, val_images, val_labels, test_images, test_labels = loader(
                     train_size=train_target, val_size=val_target, test_size=test_target
                 )
             except Exception as e:
