@@ -52,6 +52,16 @@ def main():
     chk = tk.Checkbutton(root, text="Give full dataset to each client", variable=full_var)
     chk.pack(padx=12, pady=(6, 0), anchor=tk.W)
 
+    # Data distribution selection (IID vs Non-IID)
+    data_frame = tk.Frame(root)
+    data_frame.pack(padx=12, pady=(6, 0), anchor=tk.W)
+    tk.Label(data_frame, text="Data distribution:").grid(row=0, column=0, sticky=tk.W)
+    dataset_var = tk.StringVar(value="iid")
+    rb_iid = tk.Radiobutton(data_frame, text="IID-Data (MNIST)", variable=dataset_var, value="iid")
+    rb_non_iid = tk.Radiobutton(data_frame, text="Non-IID-Data (fashion-mnist)", variable=dataset_var, value="non_iid")
+    rb_iid.grid(row=0, column=1, padx=(8, 4), sticky=tk.W)
+    rb_non_iid.grid(row=0, column=2, padx=(8, 4), sticky=tk.W)
+
     # Algorithms selection
     alg_frame = tk.Frame(root)
     alg_frame.pack(padx=12, pady=(6, 0), anchor=tk.W)
@@ -185,6 +195,7 @@ def main():
         except Exception:
             rounds = 3
         full_per_client = bool(full_var.get())
+        dataset_mode = dataset_var.get()
         algs = {
             "Centralized": bool(central_var.get()),
             "FedAvg": bool(fedavg_var.get()),
@@ -198,6 +209,11 @@ def main():
 
         btn_run.config(state=tk.DISABLED)
         out_text.delete("1.0", tk.END)
+        # Show the selected dataset mode
+        if dataset_mode == "iid":
+            out_text.insert(tk.END, "Selected data: IID-Data (MNIST)\n")
+        else:
+            out_text.insert(tk.END, "Selected data: Non-IID-Data (fashion-mnist)\n")
         out_text.insert(tk.END, "Loading and training...\n")
 
         # storage for results to write to result.txt
