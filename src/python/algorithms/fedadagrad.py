@@ -5,7 +5,7 @@ from metrics import compute_round_metrics
 
 
 def fedadagrad(x_train, y_train, x_test, y_test, clients=3, rounds=3, local_epochs=1,
-               batch_size=64, server_lr=0.01, tau=1e-3, full_data_per_client=False, report=None):
+               batch_size=64, server_lr=0.01, tau=1e-3, full_data_per_client=False, report=None, shards=None):
     """FedAdagrad: Adaptive Federated Optimization with server-side Adagrad.
     
     Uses accumulated squared gradients on the server to adapt learning rates
@@ -20,11 +20,12 @@ def fedadagrad(x_train, y_train, x_test, y_test, clients=3, rounds=3, local_epoc
         Test accuracy (float)
     """
     n = len(x_train)
-    if full_data_per_client:
-        shards = [np.arange(n) for _ in range(clients)]
-    else:
-        idx = np.random.permutation(n)
-        shards = np.array_split(idx, clients)
+    if shards is None:
+        if full_data_per_client:
+            shards = [np.arange(n) for _ in range(clients)]
+        else:
+            idx = np.random.permutation(n)
+            shards = np.array_split(idx, clients)
     
     # Initialize global model
     global_model = make_model()
