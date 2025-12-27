@@ -11,6 +11,7 @@ os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
 from model import load_mnist, load_fashion_mnist
+from partition import make_label_shards
 from algorithms.centralized import train_centralized
 from algorithms.fedavg import federated_average as fedavg
 from algorithms.fedprox import fedprox
@@ -269,6 +270,9 @@ def main():
                 train_images, train_labels, val_images, val_labels, test_images, test_labels = loader(
                     train_size=train_target, val_size=val_target, test_size=test_target
                 )
+                shards = None
+                if dataset_mode == "non_iid":
+                    shards = make_label_shards(train_labels, clients=clients, classes_per_client=2)
             except Exception as e:
                 root.after(0, messagebox.showerror, "Error", f"Failed to load MNIST: {e}")
                 root.after(0, btn_run.config, {"state": tk.NORMAL})
@@ -294,31 +298,31 @@ def main():
                 if algs["FedAvg"]:
                     fedavg(train_images, train_labels, test_images, test_labels,
                            clients=clients, rounds=rounds, full_data_per_client=full_per_client,
-                           report=report)
+                           report=report, shards=shards)
                 if algs["FedProx"]:
                     fedprox(train_images, train_labels, test_images, test_labels,
                             clients=clients, rounds=rounds, full_data_per_client=full_per_client,
-                            report=report)
+                            report=report, shards=shards)
                 if algs["SCAFFOLD"]:
                     scaffold(train_images, train_labels, test_images, test_labels,
                              clients=clients, rounds=rounds, full_data_per_client=full_per_client,
-                             report=report)
+                             report=report, shards=shards)
                 if algs["FedAdam"]:
                     fedadam(train_images, train_labels, test_images, test_labels,
                             clients=clients, rounds=rounds, full_data_per_client=full_per_client,
-                            report=report)
+                            report=report, shards=shards)
                 if algs["FedYogi"]:
                     fedyogi(train_images, train_labels, test_images, test_labels,
                             clients=clients, rounds=rounds, full_data_per_client=full_per_client,
-                            report=report)
+                            report=report, shards=shards)
                 if algs["FedAdagrad"]:
                     fedadagrad(train_images, train_labels, test_images, test_labels,
                                clients=clients, rounds=rounds, full_data_per_client=full_per_client,
-                               report=report)
+                               report=report, shards=shards)
                 if algs["FedNova"]:
                     fednova(train_images, train_labels, test_images, test_labels,
                             clients=clients, rounds=rounds, full_data_per_client=full_per_client,
-                            report=report)
+                            report=report, shards=shards)
                 # after all selected algorithms complete, write p_result.txt (and legacy result.txt) under results/
                 try:
                     base_dir = os.path.dirname(__file__)
