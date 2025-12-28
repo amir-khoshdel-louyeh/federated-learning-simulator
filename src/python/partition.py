@@ -52,3 +52,53 @@ def make_label_shards(y_train: np.ndarray, clients: int, classes_per_client: int
         rng.shuffle(arr)
         shards_np.append(arr)
     return shards_np
+
+
+def make_non_iid_primary_with_common(
+    y_train: np.ndarray,
+    clients: int,
+    primary_labels: List[int] | None = None,
+    common_label: int = 7,
+    common_fraction: float = 0.1,
+    seed: int | None = None,
+) -> List[np.ndarray]:
+    """Create Non-IID shards where each client has a distinct primary label
+    and all clients share a small portion of a common label (e.g., Sneaker=7).
+
+    - If `primary_labels` is None, pick unique labels per client from available
+      labels excluding `common_label`. If clients exceed available labels,
+      selection will cycle and duplicates may occur.
+    - `common_fraction` controls what fraction of all `common_label` samples
+      are distributed (evenly) among clients.
+    """
+    rng = np.random.default_rng(seed)
+    labels = [int(l) for l in np.unique(y_train).tolist() if int(l) != int(common_label)]
+    if primary_labels is None:
+        if len(labels) == 0:
+            raise ValueError("No available primary labels in y_train")
+        # ensure deterministic but shuffled assignment
+        rng.shuffle(labels)
+        # assign one primary per client, cycling if needed
+        primary_labels = [labels[i % len(labels)] for i in range(clients)]
+    # Build shards list
+    shards: List[List[int]] = [[] for _ in range(clients)]
+    # Distribute common label portion
+    common_idx = np.where(y_train == common_label)[0]
+    rng.shuffle(common_idx)
+    total_common = int(len(common_idx) * max(0.0, min(1.0, common_fraction)))
+    common_selected = common_idx[:total_common]
+    parts = np.array_split(common_selected, clients)
+    for c in range(clients):
+        shards[c].extend(parts[c].tolist())
+    # Add primary label samples per client
+    for c, pl in enumerate(primary_labels):
+        p_idx = np.where(y_train == pl)[0]
+        rng.shuffle(p_idx)
+        shards[c].extend(p_idx.tolist())
+    # Finalize shards as numpy arrays (shuffled)
+    result: List[np.ndarray] = []
+    for s in shards:
+        arr = np.array(s, dtype=int)
+        rng.shuffle(arr)
+        result.append(arr)
+    return result

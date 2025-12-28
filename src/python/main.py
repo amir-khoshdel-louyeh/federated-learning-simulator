@@ -11,7 +11,7 @@ os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
 from model import load_mnist, load_fashion_mnist
-from partition import make_label_shards
+from partition import make_non_iid_primary_with_common
 from algorithms.centralized import train_centralized
 from algorithms.fedavg import federated_average as fedavg
 from algorithms.fedprox import fedprox
@@ -214,7 +214,7 @@ def main():
         if dataset_mode == "iid":
             out_text.insert(tk.END, "Selected data: IID-Data (MNIST)\n")
         else:
-            out_text.insert(tk.END, "Selected data: Non-IID-Data (fashion-mnist)\n")
+            out_text.insert(tk.END, "Selected data: Non-IID-Data (fashion-mnist) — distinct primary label per client + 10% Sneaker shared.\n")
         out_text.insert(tk.END, "Loading and training...\n")
 
         # storage for results to write to result.txt
@@ -272,7 +272,8 @@ def main():
                 )
                 shards = None
                 if dataset_mode == "non_iid":
-                    shards = make_label_shards(train_labels, clients=clients, classes_per_client=2)
+                    # Non-IID: distinct primary label per client + 10% common Sneaker
+                    shards = make_non_iid_primary_with_common(train_labels, clients=clients, common_label=7, common_fraction=0.1)
             except Exception as e:
                 root.after(0, messagebox.showerror, "Error", f"Failed to load MNIST: {e}")
                 root.after(0, btn_run.config, {"state": tk.NORMAL})
