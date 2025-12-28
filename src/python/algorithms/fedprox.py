@@ -6,7 +6,7 @@ from model import make_model
 from metrics import compute_round_metrics
 
 
-def fedprox(x_train, y_train, x_test, y_test, clients=3, rounds=3, mu=0.01, local_epochs=1, batch_size=64, full_data_per_client=False, report=None):
+def fedprox(x_train, y_train, x_test, y_test, clients=3, rounds=3, mu=0.01, local_epochs=1, batch_size=64, full_data_per_client=False, report=None, shards=None):
     """Simple FedProx implementation.
 
     - Splits `x_train` among `clients` (unless `full_data_per_client=True`).
@@ -19,13 +19,12 @@ def fedprox(x_train, y_train, x_test, y_test, clients=3, rounds=3, mu=0.01, loca
     Returns test accuracy (float) on (x_test, y_test).
     """
     len_xtrain = len(x_train)
-    if full_data_per_client:
-        shards = []
-        for client_id in range(clients):
-            shards.append(np.arange(len_xtrain))
-    else:
-        idx = np.random.permutation(len_xtrain)
-        shards = np.array_split(idx, clients)
+    if shards is None:
+        if full_data_per_client:
+            shards = [np.arange(len_xtrain) for _ in range(clients)]
+        else:
+            idx = np.random.permutation(len_xtrain)
+            shards = np.array_split(idx, clients)
 
     # initialize global model and weights
     global_model = make_model()
