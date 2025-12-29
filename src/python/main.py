@@ -63,6 +63,25 @@ def main():
     rb_iid.grid(row=0, column=1, padx=(8, 4), sticky=tk.W)
     rb_non_iid.grid(row=0, column=2, padx=(8, 4), sticky=tk.W)
 
+    # Non-IID options (common label + fraction)
+    noniid_frame = tk.Frame(root)
+    noniid_frame.pack(padx=12, pady=(4, 0), anchor=tk.W)
+    tk.Label(noniid_frame, text="Non-IID options:").grid(row=0, column=0, sticky=tk.W)
+    # Fashion-MNIST categories
+    fashion_categories = [
+        (0, "T-shirt/top"), (1, "Trouser"), (2, "Pullover"), (3, "Dress"), (4, "Coat"),
+        (5, "Sandal"), (6, "Shirt"), (7, "Sneaker"), (8, "Bag"), (9, "Ankle boot")
+    ]
+    cat_name_to_id = {name: idx for idx, name in fashion_categories}
+    common_label_var = tk.StringVar(value="Sneaker")
+    tk.Label(noniid_frame, text="Common label:").grid(row=0, column=1, padx=(12, 4), sticky=tk.W)
+    common_menu = tk.OptionMenu(noniid_frame, common_label_var, *[name for _id, name in fashion_categories])
+    common_menu.grid(row=0, column=2, sticky=tk.W)
+    tk.Label(noniid_frame, text="Common fraction:").grid(row=0, column=3, padx=(12, 4), sticky=tk.W)
+    common_frac_entry = tk.Entry(noniid_frame, width=6)
+    common_frac_entry.insert(0, "0.1")
+    common_frac_entry.grid(row=0, column=4, sticky=tk.W)
+
     # Algorithms selection
     alg_frame = tk.Frame(root)
     alg_frame.pack(padx=12, pady=(6, 0), anchor=tk.W)
@@ -197,6 +216,15 @@ def main():
             rounds = 3
         full_per_client = bool(full_var.get())
         dataset_mode = dataset_var.get()
+        # Read Non-IID options
+        try:
+            common_fraction = float(common_frac_entry.get())
+            if not (0.0 <= common_fraction <= 1.0):
+                common_fraction = 0.1
+        except Exception:
+            common_fraction = 0.1
+        common_label_name = common_label_var.get()
+        selected_common_label_id = cat_name_to_id.get(common_label_name, 7)
         algs = {
             "Centralized": bool(central_var.get()),
             "FedAvg": bool(fedavg_var.get()),
@@ -214,7 +242,7 @@ def main():
         if dataset_mode == "iid":
             out_text.insert(tk.END, "Selected data: IID-Data (MNIST)\n")
         else:
-            out_text.insert(tk.END, "Selected data: Non-IID-Data (fashion-mnist) — distinct primary label per client + 10% Sneaker shared.\n")
+            out_text.insert(tk.END, f"Selected data: Non-IID-Data (fashion-mnist) — distinct primary label per client + {common_fraction:.2f} {common_label_name} shared.\n")
         out_text.insert(tk.END, "Loading and training...\n")
 
         # storage for results to write to result.txt
@@ -272,8 +300,13 @@ def main():
                 )
                 shards = None
                 if dataset_mode == "non_iid":
-                    # Non-IID: distinct primary label per client + 10% common Sneaker
-                    shards = make_non_iid_primary_with_common(train_labels, clients=clients, common_label=7, common_fraction=0.1)
+                    # Non-IID: distinct primary label per client + user-selected common portion
+                    shards = make_non_iid_primary_with_common(
+                        train_labels,
+                        clients=clients,
+                        common_label=selected_common_label_id,
+                        common_fraction=common_fraction,
+                    )
             except Exception as e:
                 root.after(0, messagebox.showerror, "Error", f"Failed to load MNIST: {e}")
                 root.after(0, btn_run.config, {"state": tk.NORMAL})
