@@ -82,6 +82,23 @@ def main():
     common_frac_entry.insert(0, "0.1")
     common_frac_entry.grid(row=0, column=4, sticky=tk.W)
 
+    # Show Non-IID options only when Non-IID is selected,
+    # keep it positioned above the Algorithms frame.
+    def update_noniid_visibility(*_):
+        mode = dataset_var.get()
+        if mode == "non_iid":
+            try:
+                noniid_frame.pack(padx=12, pady=(4, 0), anchor=tk.W, before=alg_frame)
+            except Exception:
+                # Fallback if alg_frame not yet created
+                noniid_frame.pack(padx=12, pady=(4, 0), anchor=tk.W)
+        else:
+            noniid_frame.pack_forget()
+
+    dataset_var.trace_add("write", update_noniid_visibility)
+    # initialize visibility based on default selection
+    update_noniid_visibility()
+
     # Algorithms selection
     alg_frame = tk.Frame(root)
     alg_frame.pack(padx=12, pady=(6, 0), anchor=tk.W)
