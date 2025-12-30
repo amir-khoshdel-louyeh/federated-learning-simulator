@@ -49,9 +49,6 @@ def main():
     rounds_entry.insert(0, "3")
     rounds_entry.grid(row=1, column=3, padx=(6, 0))
 
-    full_var = tk.BooleanVar(value=False)
-    chk = tk.Checkbutton(root, text="Give full dataset to each client", variable=full_var)
-    chk.pack(padx=12, pady=(6, 0), anchor=tk.W)
 
     # Data distribution selection (IID vs Non-IID)
     data_frame = tk.Frame(root)
@@ -231,7 +228,6 @@ def main():
             rounds = int(rounds_entry.get())
         except Exception:
             rounds = 3
-        full_per_client = bool(full_var.get())
         dataset_mode = dataset_var.get()
         # Read Non-IID options
         try:
@@ -348,31 +344,31 @@ def main():
 
                 if algs["FedAvg"]:
                     fedavg(train_images, train_labels, test_images, test_labels,
-                           clients=clients, rounds=rounds, full_data_per_client=full_per_client,
+                           clients=clients, rounds=rounds,
                            report=report, shards=shards)
                 if algs["FedProx"]:
                     fedprox(train_images, train_labels, test_images, test_labels,
-                            clients=clients, rounds=rounds, full_data_per_client=full_per_client,
+                            clients=clients, rounds=rounds,
                             report=report, shards=shards)
                 if algs["SCAFFOLD"]:
                     scaffold(train_images, train_labels, test_images, test_labels,
-                             clients=clients, rounds=rounds, full_data_per_client=full_per_client,
+                             clients=clients, rounds=rounds,
                              report=report, shards=shards)
                 if algs["FedAdam"]:
                     fedadam(train_images, train_labels, test_images, test_labels,
-                            clients=clients, rounds=rounds, full_data_per_client=full_per_client,
+                            clients=clients, rounds=rounds,
                             report=report, shards=shards)
                 if algs["FedYogi"]:
                     fedyogi(train_images, train_labels, test_images, test_labels,
-                            clients=clients, rounds=rounds, full_data_per_client=full_per_client,
+                            clients=clients, rounds=rounds,
                             report=report, shards=shards)
                 if algs["FedAdagrad"]:
                     fedadagrad(train_images, train_labels, test_images, test_labels,
-                               clients=clients, rounds=rounds, full_data_per_client=full_per_client,
+                               clients=clients, rounds=rounds,
                                report=report, shards=shards)
                 if algs["FedNova"]:
                     fednova(train_images, train_labels, test_images, test_labels,
-                            clients=clients, rounds=rounds, full_data_per_client=full_per_client,
+                            clients=clients, rounds=rounds,
                             report=report, shards=shards)
                 # after all selected algorithms complete, write p_result.txt (and legacy result.txt) under results/
                 try:

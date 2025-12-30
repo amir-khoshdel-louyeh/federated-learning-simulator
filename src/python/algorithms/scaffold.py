@@ -6,7 +6,7 @@ from model import make_model
 from metrics import compute_round_metrics
 
 
-def scaffold(x_train, y_train, x_test, y_test, clients=3, rounds=3, local_epochs=1, batch_size=64, lr=0.001, full_data_per_client=False, report=None, shards=None):
+def scaffold(x_train, y_train, x_test, y_test, clients=3, rounds=3, local_epochs=1, batch_size=64, lr=0.001, report=None, shards=None):
     """A straightforward SCAFFOLD implementation.
 
     Notes / simplifications:
@@ -21,11 +21,8 @@ def scaffold(x_train, y_train, x_test, y_test, clients=3, rounds=3, local_epochs
     """
     n = len(x_train)
     if shards is None:
-        if full_data_per_client:
-            shards = [np.arange(n) for _ in range(clients)]
-        else:
-            idx = np.random.permutation(n)
-            shards = np.array_split(idx, clients)
+        idx = np.random.permutation(n)
+        shards = np.array_split(idx, clients)
 
     # initialize global model and weights
     global_model = make_model()

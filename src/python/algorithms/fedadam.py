@@ -6,7 +6,7 @@ from metrics import compute_round_metrics
 
 def fedadam(x_train, y_train, x_test, y_test, clients=3, rounds=3, local_epochs=1, 
             batch_size=64, server_lr=0.01, beta1=0.9, beta2=0.999, tau=1e-3, 
-            full_data_per_client=False, report=None, shards=None):
+            report=None, shards=None):
     """FedAdam: Adaptive Federated Optimization with server-side Adam.
     
     Uses momentum (beta1) and adaptive learning rates (beta2) on the server
@@ -24,11 +24,8 @@ def fedadam(x_train, y_train, x_test, y_test, clients=3, rounds=3, local_epochs=
     """
     n = len(x_train)
     if shards is None:
-        if full_data_per_client:
-            shards = [np.arange(n) for _ in range(clients)]
-        else:
-            idx = np.random.permutation(n)
-            shards = np.array_split(idx, clients)
+        idx = np.random.permutation(n)
+        shards = np.array_split(idx, clients)
     
     # Initialize global model
     global_model = make_model()
