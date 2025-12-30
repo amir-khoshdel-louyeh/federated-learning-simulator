@@ -6,6 +6,8 @@ A simple simulator for centralized and federated training on MNIST with both Pyt
 ## Features
 
 - MNIST loader with configurable train/val/test sizes (80/10/10 split by default)
+- Dataset selection in GUI: IID (MNIST) or Non-IID (Fashion-MNIST)
+- Non-IID options: configurable common label (e.g., Sneaker) and shared fraction
 - Centralized baseline and federated algorithms:
 	- FedAvg, FedProx, SCAFFOLD, FedAdam, FedYogi, FedAdagrad, FedNova
 - Per-round metrics:
@@ -22,7 +24,8 @@ src/
 	python/
 		main.py                # GUI app (Tkinter)
 		comparison.py          # Figure generator (supports Python, MATLAB, or both)
-		model.py               # MNIST loader and model factory
+		model.py               # Dataset loaders (MNIST, Fashion-MNIST) + model factory
+		partition.py           # Non-IID shard builders (primary label + common portion)
 		metrics.py             # Common metric computations
 		centralized.py         # Centralized baseline
 		fedavg.py   		   # FedAvg
@@ -87,7 +90,8 @@ python src/python/main.py
 Usage in the GUI:
 - Enter total dataset size; app splits 80/10/10 into train/val/test (live preview displayed)
 - Choose number of clients and rounds
-- Toggle “Give full dataset to each client”
+- Choose data distribution: IID (MNIST) or Non-IID (Fashion-MNIST)
+- If Non-IID: configure common label and shared fraction in the options panel
 - Select algorithms and click “Run selected algorithms”
 - When finished, the app writes `src/results/p_result.txt` and displays comparison graphs
 
@@ -105,6 +109,8 @@ You’ll be prompted for:
 - Number of clients
 - Number of rounds
 - Whether each client gets the full dataset or partitions are split among clients
+
+Note: The Python GUI no longer includes a “full dataset per client” toggle. Non-IID behavior in Python is achieved via Fashion-MNIST with shard builders in `src/python/partition.py`.
 
 The script runs ALL algorithms and writes `src/results/m_result.txt`.
 
