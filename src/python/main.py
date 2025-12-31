@@ -17,7 +17,6 @@ from algorithms.fedavg import federated_average as fedavg
 from algorithms.fedprox import fedprox
 from algorithms.scaffold import scaffold
 from algorithms.fedadam import fedadam
-from algorithms.fedyogi import fedyogi
 from algorithms.fedadagrad import fedadagrad
 from algorithms.fednova import fednova
 
@@ -105,7 +104,6 @@ def main():
     fedprox_var = tk.BooleanVar(value=False)
     scaffold_var = tk.BooleanVar(value=False)
     fedadam_var = tk.BooleanVar(value=False)
-    fedyogi_var = tk.BooleanVar(value=False)
     fedadagrad_var = tk.BooleanVar(value=False)
     fednova_var = tk.BooleanVar(value=False)
     
@@ -114,7 +112,6 @@ def main():
     cb3 = tk.Checkbutton(alg_frame, text="FedProx", variable=fedprox_var)
     cb4 = tk.Checkbutton(alg_frame, text="SCAFFOLD", variable=scaffold_var)
     cb5 = tk.Checkbutton(alg_frame, text="FedAdam", variable=fedadam_var)
-    cb6 = tk.Checkbutton(alg_frame, text="FedYogi", variable=fedyogi_var)
     cb7 = tk.Checkbutton(alg_frame, text="FedAdagrad", variable=fedadagrad_var)
     cb8 = tk.Checkbutton(alg_frame, text="FedNova", variable=fednova_var)
     
@@ -123,9 +120,8 @@ def main():
     cb3.grid(row=0, column=3, padx=(8, 4))
     cb4.grid(row=0, column=4, padx=(8, 4))
     cb5.grid(row=1, column=1, padx=(8, 4))
-    cb6.grid(row=1, column=2, padx=(8, 4))
-    cb7.grid(row=1, column=3, padx=(8, 4))
-    cb8.grid(row=1, column=4, padx=(8, 4))
+    cb7.grid(row=1, column=2, padx=(8, 4))
+    cb8.grid(row=1, column=3, padx=(8, 4))
 
     # Output log area
     out_frame = tk.Frame(root)
@@ -244,7 +240,6 @@ def main():
             "FedProx": bool(fedprox_var.get()),
             "SCAFFOLD": bool(scaffold_var.get()),
             "FedAdam": bool(fedadam_var.get()),
-            "FedYogi": bool(fedyogi_var.get()),
             "FedAdagrad": bool(fedadagrad_var.get()),
             "FedNova": bool(fednova_var.get()),
         }
@@ -356,10 +351,6 @@ def main():
                              report=report, shards=shards)
                 if algs["FedAdam"]:
                     fedadam(train_images, train_labels, test_images, test_labels,
-                            clients=clients, rounds=rounds,
-                            report=report, shards=shards)
-                if algs["FedYogi"]:
-                    fedyogi(train_images, train_labels, test_images, test_labels,
                             clients=clients, rounds=rounds,
                             report=report, shards=shards)
                 if algs["FedAdagrad"]:
