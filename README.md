@@ -9,7 +9,7 @@ A simple simulator for centralized and federated training on MNIST with both Pyt
 - Dataset selection in GUI: IID (MNIST) or Non-IID (Fashion-MNIST)
 - Non-IID options: configurable common label (e.g., Sneaker) and shared fraction
 - Centralized baseline and federated algorithms:
-	- FedAvg, FedProx, SCAFFOLD, FedAdam, FedAdagrad, FedNova
+	- FedAvg, FedProx, SCAFFOLD, FedAdagrad, FedNova
 - Per-round metrics:
 	- Accuracy, Convergence, Communication Cost, Stability / Variance, Training Time, Velocity
 - Results saved to text files for easy cross-language comparison
@@ -31,7 +31,6 @@ src/
 		fedavg.py   		   # FedAvg
 		fedprox.py             # FedProx
 		scaffold.py            # SCAFFOLD
-		fedadam.py             # FedAdam (server-side Adam)
 		fedadagrad.py          # FedAdagrad (server-side Adagrad)
 		fednova.py             # FedNova
 		requirements.txt       # Python dependencies
