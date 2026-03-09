@@ -1,6 +1,6 @@
 function main
 % MATLAB port of federated-learning-simulator to compare results with Python
-% Default run: Centralized + FedAvg. You can toggle flags below.
+% Mirrors Python runtime options except UI format (CLI prompts here).
     % Ensure subfolders (e.g., algorithms) are on the MATLAB path
     here = fileparts(mfilename('fullpath'));
     addpath(here);
@@ -31,34 +31,60 @@ function main
     catch
         rounds = 3;
     end
+    % Dataset mode selection (matches Python GUI semantics)
     try
-        full_data_per_client = input('Give full dataset to each client? (true/false, default false): ');
-        if isempty(full_data_per_client)
-            full_data_per_client = false;
-        else
-            full_data_per_client = logical(full_data_per_client);
+        dataset_mode = strtrim(lower(input('Data distribution [iid/non_iid] (default iid): ', 's')));
+        if isempty(dataset_mode)
+            dataset_mode = 'iid';
+        end
+        if ~ismember(dataset_mode, {'iid', 'non_iid'})
+            dataset_mode = 'iid';
         end
     catch
-        full_data_per_client = false;
+        dataset_mode = 'iid';
     end
 
-    % Algorithm selection
-    run_centralized = true;
-    run_fedavg = true;
-    run_fedprox = true;
-    run_scaffold = true;
-    run_fedadam = true;
-    run_fedyogi = true;
-    run_fedadagrad = true;
-    run_fednova = true;
+    common_label = 7;
+    common_fraction = 0.1;
+    if strcmp(dataset_mode, 'non_iid')
+        try
+            cl = input('Common label [0..9] (default 7): ');
+            if ~isempty(cl) && isnumeric(cl) && cl >= 0 && cl <= 9
+                common_label = floor(cl);
+            end
+        catch
+        end
+        try
+            cf = input('Common fraction [0..1] (default 0.1): ');
+            if ~isempty(cf) && isnumeric(cf)
+                common_fraction = max(0.0, min(1.0, cf));
+            end
+        catch
+        end
+    end
+
+    % Algorithm selection (defaults match Python GUI)
+    run_centralized = prompt_bool('Run Centralized? [y/n] (default y): ', true);
+    run_fedavg = prompt_bool('Run FedAvg? [y/n] (default y): ', true);
+    run_fedprox = prompt_bool('Run FedProx? [y/n] (default n): ', false);
+    run_scaffold = prompt_bool('Run SCAFFOLD? [y/n] (default n): ', false);
+    run_fedadagrad = prompt_bool('Run FedAdagrad? [y/n] (default n): ', false);
+    run_fednova = prompt_bool('Run FedNova? [y/n] (default n): ', false);
 
     % Compute split sizes (80/10/10)
     train_target = floor(total_dataset * 0.8);
     test_target = floor(total_dataset * 0.1);
     val_target = total_dataset - train_target - test_target;
 
-    fprintf('Loading MNIST (train=%d, val=%d, test=%d) ...\n', train_target, val_target, test_target);
-    [train_images, train_labels, val_images, val_labels, test_images, test_labels] = load_mnist(train_target, val_target, test_target);
+    if strcmp(dataset_mode, 'non_iid')
+        fprintf('Loading Fashion-MNIST (train=%d, val=%d, test=%d) ...\n', train_target, val_target, test_target);
+        [train_images, train_labels, val_images, val_labels, test_images, test_labels] = load_fashion_mnist(train_target, val_target, test_target);
+        shards = make_non_iid_primary_with_common(train_labels, clients, 'common_label', common_label, 'common_fraction', common_fraction);
+    else
+        fprintf('Loading MNIST (train=%d, val=%d, test=%d) ...\n', train_target, val_target, test_target);
+        [train_images, train_labels, val_images, val_labels, test_images, test_labels] = load_mnist(train_target, val_target, test_target);
+        shards = [];
+    end
 
     % Results store (per algorithm). Use sanitized field names (no spaces).
     results_store = struct();
@@ -98,37 +124,27 @@ function main
 
     if run_fedavg
         fprintf('Running FedAvg (clients=%d, rounds=%d)...\n', clients, rounds);
-        fedavg(train_images, train_labels, test_images, test_labels, 'clients', clients, 'rounds', rounds, 'full_data_per_client', full_data_per_client, 'report', @report);
+        fedavg(train_images, train_labels, test_images, test_labels, 'clients', clients, 'rounds', rounds, 'shards', shards, 'report', @report);
     end
 
     if run_fedprox
         fprintf('Running FedProx...\n');
-        fedprox(train_images, train_labels, test_images, test_labels, 'clients', clients, 'rounds', rounds, 'full_data_per_client', full_data_per_client, 'report', @report);
+        fedprox(train_images, train_labels, test_images, test_labels, 'clients', clients, 'rounds', rounds, 'shards', shards, 'report', @report);
     end
 
     if run_scaffold
         fprintf('Running SCAFFOLD...\n');
-        scaffold(train_images, train_labels, test_images, test_labels, 'clients', clients, 'rounds', rounds, 'full_data_per_client', full_data_per_client, 'report', @report);
-    end
-
-    if run_fedadam
-        fprintf('Running FedAdam...\n');
-        fedadam(train_images, train_labels, test_images, test_labels, 'clients', clients, 'rounds', rounds, 'full_data_per_client', full_data_per_client, 'report', @report);
-    end
-
-    if run_fedyogi
-        fprintf('Running FedYogi...\n');
-        fedyogi(train_images, train_labels, test_images, test_labels, 'clients', clients, 'rounds', rounds, 'full_data_per_client', full_data_per_client, 'report', @report);
+        scaffold(train_images, train_labels, test_images, test_labels, 'clients', clients, 'rounds', rounds, 'shards', shards, 'report', @report);
     end
 
     if run_fedadagrad
         fprintf('Running FedAdagrad...\n');
-        fedadagrad(train_images, train_labels, test_images, test_labels, 'clients', clients, 'rounds', rounds, 'full_data_per_client', full_data_per_client, 'report', @report);
+        fedadagrad(train_images, train_labels, test_images, test_labels, 'clients', clients, 'rounds', rounds, 'shards', shards, 'report', @report);
     end
 
     if run_fednova
         fprintf('Running FedNova...\n');
-        fednova(train_images, train_labels, test_images, test_labels, 'clients', clients, 'rounds', rounds, 'full_data_per_client', full_data_per_client, 'report', @report);
+        fednova(train_images, train_labels, test_images, test_labels, 'clients', clients, 'rounds', rounds, 'shards', shards, 'report', @report);
     end
 
     % Write results to src/results as Matlab result (m_result.txt)
@@ -176,5 +192,22 @@ function main
         time = python_like_list(rs.TrainingTime);
         vel = python_like_list(rs.Velocity);
         d = sprintf('{''Accuracy'': %s, ''Convergence'': %s, ''Communication Cost'': %s, ''Stability / Variance'': %s, ''Training Time'': %s, ''Velocity'': %s}', acc, conv, comm, varr, time, vel);
+    end
+
+    function out = prompt_bool(prompt_text, default_val)
+        try
+            s = strtrim(lower(input(prompt_text, 's')));
+            if isempty(s)
+                out = default_val;
+            elseif strcmp(s, 'y') || strcmp(s, 'yes') || strcmp(s, '1')
+                out = true;
+            elseif strcmp(s, 'n') || strcmp(s, 'no') || strcmp(s, '0')
+                out = false;
+            else
+                out = default_val;
+            end
+        catch
+            out = default_val;
+        end
     end
 end
