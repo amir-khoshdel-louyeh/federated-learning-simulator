@@ -16,7 +16,6 @@ function model = make_model()
     in_dim = 28 * 28;
     hid_dim = 64;
     out_dim = 10;
-    rng('default');
     scale1 = sqrt(2 / in_dim);
     scale2 = sqrt(2 / hid_dim);
     model.W1 = scale1 * randn(in_dim, hid_dim);
