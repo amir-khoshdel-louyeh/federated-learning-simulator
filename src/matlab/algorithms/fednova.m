@@ -2,7 +2,7 @@ function acc = fednova(x_train, y_train, x_test, y_test, varargin)
 % FedNova: Normalized Averaging for Heterogeneous Client Updates.
 % Optional name-value:
 %  'clients' (3), 'rounds' (3), 'local_epochs' (1), 'batch_size' (64),
-%  'full_data_per_client' (false), 'report' (function)
+%  'full_data_per_client' (false), 'shards' ([]), 'report' (function)
 
     p = inputParser;
     addParameter(p, 'clients', 3);
@@ -10,6 +10,7 @@ function acc = fednova(x_train, y_train, x_test, y_test, varargin)
     addParameter(p, 'local_epochs', 1);
     addParameter(p, 'batch_size', 64);
     addParameter(p, 'full_data_per_client', false);
+    addParameter(p, 'shards', []);
     addParameter(p, 'report', []);
     parse(p, varargin{:});
 
@@ -18,10 +19,13 @@ function acc = fednova(x_train, y_train, x_test, y_test, varargin)
     local_epochs = p.Results.local_epochs;
     batch_size = p.Results.batch_size;
     full_data_per_client = p.Results.full_data_per_client;
+    shards = p.Results.shards;
     report = p.Results.report;
 
     n = size(x_train, 1);
-    shards = make_shards(n, clients, full_data_per_client);
+    if isempty(shards)
+        shards = make_shards(n, clients, full_data_per_client);
+    end
 
     global_model = make_model();
     global_weights = global_model.get_weights();

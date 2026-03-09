@@ -2,7 +2,7 @@ function acc = scaffold(x_train, y_train, x_test, y_test, varargin)
 % SCAFFOLD implementation with control variates.
 % Optional name-value:
 %  'clients' (3), 'rounds' (3), 'local_epochs' (1), 'batch_size' (64), 'lr' (0.001),
-%  'full_data_per_client' (false), 'report' (function)
+%  'full_data_per_client' (false), 'shards' ([]), 'report' (function)
 
     p = inputParser;
     addParameter(p, 'clients', 3);
@@ -11,6 +11,7 @@ function acc = scaffold(x_train, y_train, x_test, y_test, varargin)
     addParameter(p, 'batch_size', 64);
     addParameter(p, 'lr', 0.001);
     addParameter(p, 'full_data_per_client', false);
+    addParameter(p, 'shards', []);
     addParameter(p, 'report', []);
     parse(p, varargin{:});
 
@@ -20,10 +21,13 @@ function acc = scaffold(x_train, y_train, x_test, y_test, varargin)
     batch_size = p.Results.batch_size;
     lr = p.Results.lr;
     full_data_per_client = p.Results.full_data_per_client;
+    shards = p.Results.shards;
     report = p.Results.report;
 
     n = size(x_train, 1);
-    shards = make_shards(n, clients, full_data_per_client);
+    if isempty(shards)
+        shards = make_shards(n, clients, full_data_per_client);
+    end
 
     global_model = make_model();
     global_model.lr = lr; % set LR

@@ -4,22 +4,27 @@ function acc = fedavg(x_train, y_train, x_test, y_test, varargin)
 %  'clients' (default 3)
 %  'rounds' (default 3)
 %  'full_data_per_client' (default false)
+%  'shards' (default [])
 %  'report' (function handle)
 
     p = inputParser;
     addParameter(p, 'clients', 3);
     addParameter(p, 'rounds', 3);
     addParameter(p, 'full_data_per_client', false);
+    addParameter(p, 'shards', []);
     addParameter(p, 'report', []);
     parse(p, varargin{:});
 
     clients = p.Results.clients;
     rounds = p.Results.rounds;
     full_data_per_client = p.Results.full_data_per_client;
+    shards = p.Results.shards;
     report = p.Results.report;
 
     len_xtrain = size(x_train, 1);
-    shards = make_shards(len_xtrain, clients, full_data_per_client);
+    if isempty(shards)
+        shards = make_shards(len_xtrain, clients, full_data_per_client);
+    end
 
     global_model = make_model();
     global_weights = global_model.get_weights();

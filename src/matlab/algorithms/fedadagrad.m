@@ -2,7 +2,7 @@ function acc = fedadagrad(x_train, y_train, x_test, y_test, varargin)
 % FedAdagrad: Server-side Adagrad optimizer.
 % Optional name-value:
 %  'clients' (3), 'rounds' (3), 'local_epochs' (1), 'batch_size' (64),
-%  'server_lr' (0.01), 'tau' (1e-3), 'full_data_per_client' (false), 'report' (function)
+%  'server_lr' (0.01), 'tau' (1e-3), 'full_data_per_client' (false), 'shards' ([]), 'report' (function)
 
     p = inputParser;
     addParameter(p, 'clients', 3);
@@ -12,6 +12,7 @@ function acc = fedadagrad(x_train, y_train, x_test, y_test, varargin)
     addParameter(p, 'server_lr', 0.01);
     addParameter(p, 'tau', 1e-3);
     addParameter(p, 'full_data_per_client', false);
+    addParameter(p, 'shards', []);
     addParameter(p, 'report', []);
     parse(p, varargin{:});
 
@@ -22,10 +23,13 @@ function acc = fedadagrad(x_train, y_train, x_test, y_test, varargin)
     server_lr = p.Results.server_lr;
     tau = p.Results.tau;
     full_data_per_client = p.Results.full_data_per_client;
+    shards = p.Results.shards;
     report = p.Results.report;
 
     n = size(x_train, 1);
-    shards = make_shards(n, clients, full_data_per_client);
+    if isempty(shards)
+        shards = make_shards(n, clients, full_data_per_client);
+    end
 
     global_model = make_model();
     global_weights = global_model.get_weights();
