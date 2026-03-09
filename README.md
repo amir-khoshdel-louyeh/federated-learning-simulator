@@ -106,14 +106,14 @@ You’ll be prompted for:
 - Total dataset size
 - Number of clients
 - Number of rounds
-- Whether each client gets the full dataset or partitions are split among clients
+- Data distribution mode: `iid` (MNIST) or `non_iid` (Fashion-MNIST)
+- For non-IID mode: common label and common fraction
+- Per-algorithm run toggle (Centralized, FedAvg, FedProx, SCAFFOLD, FedAdagrad, FedNova)
 
-Note: The Python GUI no longer includes a “full dataset per client” toggle. Non-IID behavior in Python is achieved via Fashion-MNIST with shard builders in `src/python/partition.py`.
-
-The script runs ALL algorithms and writes `src/results/m_result.txt`.
+The MATLAB CLI now mirrors Python runtime behavior (same dataset options and default algorithm selection), with the only intentional difference being UI format (CLI vs GUI). Results are written to `src/results/m_result.txt`.
 
 Notes:
-- MNIST is downloaded on first run to `src/matlab/data/` (relative to the MATLAB files).
+- MNIST and Fashion-MNIST are downloaded on first use to `src/matlab/data/`.
 - The model is a small MLP (Flatten → Dense(64, ReLU) → Dense(10, Softmax)) with manual backprop and Adam updates (no toolboxes required).
 - `main.m` automatically adds its `algorithms` subfolder to the MATLAB path, so functions like `fedavg`, `fedprox`, etc., resolve in MATLAB Online.
 
