@@ -33,9 +33,15 @@ function main
     end
     % Dataset mode selection (matches Python GUI semantics)
     try
-        dataset_mode = strtrim(lower(input('Data distribution [iid/non_iid] (default iid): ', 's')));
+        dataset_mode = strtrim(lower(input('Data distribution [i/n or iid/non_iid] (default iid): ', 's')));
         if isempty(dataset_mode)
             dataset_mode = 'iid';
+        end
+        % Accept shorthand: 'i' for iid, 'n' for non_iid
+        if strcmp(dataset_mode, 'i')
+            dataset_mode = 'iid';
+        elseif strcmp(dataset_mode, 'n')
+            dataset_mode = 'non_iid';
         end
         if ~ismember(dataset_mode, {'iid', 'non_iid'})
             dataset_mode = 'iid';
